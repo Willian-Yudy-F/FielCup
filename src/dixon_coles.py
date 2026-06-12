@@ -197,6 +197,61 @@ def probabilidades(modelo, casa, fora, neutro=True):
     return float(p_casa), float(p_empate), float(p_fora)
 
 
+def analisar_jogo(modelo, casa, fora, neutro=True):
+    """Leitura estatística completa de um confronto.
+
+    A partir da matriz de placares P(i x j) extrai os indicadores que mais
+    importam para analisar um jogo de futebol:
+      - 1X2: prob. de vitória / empate / derrota
+      - xG: gols esperados de cada lado (a média da Poisson de cada time)
+      - placar mais provável e o top-5 de placares
+      - Over/Under 2.5 gols, Ambos Marcam (BTTS) e jogo sem gols
+      - prob. de cada time não sofrer gol (clean sheet)
+      - distribuição do total de gols (0,1,2,...)
+
+    Devolve um dicionário pronto para o dashboard exibir.
+    """
+    m = matriz_placares(modelo, casa, fora, neutro=neutro)
+    n = m.shape[0]
+    i = np.arange(n)
+
+    p_casa = float(np.tril(m, -1).sum())
+    p_emp = float(np.trace(m))
+    p_fora = float(np.triu(m, 1).sum())
+
+    # gols esperados (média da matriz em cada eixo)
+    xg_casa = float((i[:, None] * m).sum())
+    xg_fora = float((i[None, :] * m).sum())
+
+    total = i[:, None] + i[None, :]
+    p_over25 = float(m[total >= 3].sum())
+    p_under25 = 1.0 - p_over25
+    p_sem_gols = float(m[0, 0])
+    p_btts = float(1 - m[0, :].sum() - m[:, 0].sum() + m[0, 0])
+    cs_casa = float(m[:, 0].sum())   # visitante não marca -> casa não sofre
+    cs_fora = float(m[0, :].sum())   # mandante não marca -> visitante não sofre
+
+    # top-5 placares mais prováveis
+    pares = [((a, b), float(m[a, b])) for a in range(n) for b in range(n)]
+    top = sorted(pares, key=lambda x: -x[1])[:5]
+    placar_provavel = top[0][0]
+
+    # distribuição do total de gols (0..6, e 7+)
+    dist = {k: float(m[total == k].sum()) for k in range(7)}
+    dist["7+"] = float(m[total >= 7].sum())
+
+    return {
+        "p_casa": p_casa, "p_empate": p_emp, "p_fora": p_fora,
+        "xg_casa": xg_casa, "xg_fora": xg_fora,
+        "p_over25": p_over25, "p_under25": p_under25,
+        "p_btts": p_btts, "p_sem_gols": p_sem_gols,
+        "cs_casa": cs_casa, "cs_fora": cs_fora,
+        "placar_provavel": placar_provavel,
+        "top_placares": top,
+        "dist_total_gols": dist,
+    }
+
+
 # ----------------------------------------------------------------------
 # Execução
 # ----------------------------------------------------------------------

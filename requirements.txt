@@ -8,3 +8,7 @@ pandas>=2.0
 numpy>=1.24
 scipy>=1.10
 streamlit>=1.30
+
+# Opcional: só para a coleta automática de resultados via API-Football
+# (o registro manual de placares no dashboard funciona sem isto)
+requests>=2.31

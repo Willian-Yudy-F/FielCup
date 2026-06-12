@@ -15,7 +15,7 @@ import streamlit as st
 RAIZ = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(RAIZ / "src"))
 
-from dixon_coles import probabilidades, matriz_placares
+from dixon_coles import probabilidades, matriz_placares, analisar_jogo
 from talento import ratings_blendados, indice_talento, detalhe_blend
 from simulate import simular
 import database as db
@@ -92,6 +92,54 @@ def salvar_resultados_live(df: pd.DataFrame) -> None:
         "away_score": val["Gols fora"].astype(int),
     })
     db.salvar_df(out, "live_results")
+
+
+def upsert_resultado(casa: str, fora: str, gc: int, gf: int) -> None:
+    """Insere/atualiza o placar de UM jogo na tabela live_results."""
+    atuais = ler_resultados_live()
+    atuais[(casa, fora)] = (int(gc), int(gf))
+    out = pd.DataFrame(
+        [{"home_team": h, "away_team": a, "home_score": s[0], "away_score": s[1]}
+         for (h, a), s in atuais.items()])
+    db.salvar_df(out, "live_results")
+
+
+def buscar_resultados_api(fixtures: pd.DataFrame):
+    """(Opcional) Busca resultados finalizados da Copa na API-Football e
+    grava os que casam com jogos de grupo em live_results.
+
+    É totalmente defensivo: se faltar chave, biblioteca ou rede, devolve
+    uma mensagem amigável em vez de quebrar o dashboard.
+
+    Retorna (qtde_gravada, mensagem).
+    """
+    import os
+    if not os.environ.get("API_FOOTBALL_KEY"):
+        return 0, ("Defina a chave antes de abrir o dashboard:\n"
+                   "`export API_FOOTBALL_KEY='sua_chave'` "
+                   "(gratuita em dashboard.api-football.com).")
+    try:
+        from api_collector import baixar_resultados_copa
+        jogos = baixar_resultados_copa()
+    except ModuleNotFoundError:
+        return 0, "Falta a biblioteca `requests`. Rode: `pip install requests`."
+    except Exception as e:
+        return 0, f"Não consegui consultar a API: {e}"
+
+    if jogos is None or jogos.empty:
+        return 0, "A API não retornou jogos finalizados ainda."
+
+    fx_pares = set(zip(fixtures["home_team"], fixtures["away_team"]))
+    gravados = 0
+    for _, r in jogos.iterrows():
+        h, a = r["home_team"], r["away_team"]
+        if (h, a) in fx_pares:
+            upsert_resultado(h, a, r["home_score"], r["away_score"]); gravados += 1
+        elif (a, h) in fx_pares:
+            upsert_resultado(a, h, r["away_score"], r["home_score"]); gravados += 1
+    nota = "" if gravados else (" Nenhum bateu com os nomes do dataset — "
+                                "os nomes da API podem diferir; use o registro manual.")
+    return gravados, f"{gravados} resultado(s) importado(s) da API.{nota}"
 
 
 @st.cache_data(show_spinner="Simulando a Copa...")
@@ -304,36 +352,122 @@ def main():
 **{prob_t:.1f}% de chance de título** nas 20 mil simulações.
     """)
 
-    # ---- motor de confrontos ----
-    st.markdown('<div class="mini-label">Matchup Engine</div>', unsafe_allow_html=True)
+    # ---- ANÁLISE DE JOGO (leitura estatística completa) ----
+    st.markdown('<div class="mini-label">Análise de Jogo · a leitura estatística</div>',
+                unsafe_allow_html=True)
     teams = sorted(grupos["selecao"], key=nm)
     labels = {f"{nm(t)}": t for t in teams}
     keys = list(labels)
     c1, c2 = st.columns(2)
     with c1:
-        la = st.selectbox("Team A", keys, index=keys.index("Brazil") if "Brazil" in keys else 0)
+        la = st.selectbox("Time A", keys, index=keys.index("Brazil") if "Brazil" in keys else 0)
     with c2:
-        lb = st.selectbox("Team B", keys, index=keys.index("France") if "France" in keys else 1)
+        lb = st.selectbox("Time B", keys, index=keys.index("France") if "France" in keys else 1)
     a, b = labels[la], labels[lb]
 
     if a == b:
-        st.warning("Pick two different teams.")
+        st.warning("Escolha dois times diferentes.")
     else:
-        pc, pe, pf = probabilidades(modelo, a, b, neutro=True)
-        m = matriz_placares(modelo, a, b, neutro=True)
-        i, j = np.unravel_index(m.argmax(), m.shape)
+        an = analisar_jogo(modelo, a, b, neutro=True)
+        i, j = an["placar_provavel"]
+
+        # placar mais provável
         st.markdown(f"""
         <div class="scorebox">
           <div class="sb-team"><div class="sb-cd">{cd(a)}</div><div class="sb-nm">{nm(a)}</div></div>
           <div class="sb-sc">{i}<span class="sb-x">v</span><span class="o">{j}</span></div>
           <div class="sb-team"><div class="sb-cd">{cd(b)}</div><div class="sb-nm">{nm(b)}</div></div>
         </div>
-        <div class="cap">most likely scoreline · α={alpha:.1f}</div>
+        <div class="cap">placar mais provável · α={alpha:.1f}</div>
         """, unsafe_allow_html=True)
+
+        # 1X2
         d1, d2, d3 = st.columns(3)
-        d1.metric(f"{nm(a)} win", f"{pc*100:.0f}%")
-        d2.metric("Draw", f"{pe*100:.0f}%")
-        d3.metric(f"{nm(b)} win", f"{pf*100:.0f}%")
+        d1.metric(f"{nm(a)} vence", f"{an['p_casa']*100:.0f}%")
+        d2.metric("Empate", f"{an['p_empate']*100:.0f}%")
+        d3.metric(f"{nm(b)} vence", f"{an['p_fora']*100:.0f}%")
+
+        # quadro de indicadores principais
+        st.markdown(f"""
+| Indicador estatístico | {nm(a)} | {nm(b)} |
+|---|:--:|:--:|
+| **Gols esperados (xG)** | **{an['xg_casa']:.2f}** | **{an['xg_fora']:.2f}** |
+| Probabilidade de vencer | {an['p_casa']*100:.0f}% | {an['p_fora']*100:.0f}% |
+| Não sofrer gol (clean sheet) | {an['cs_casa']*100:.0f}% | {an['cs_fora']*100:.0f}% |
+
+| Mercado de gols | Probabilidade |
+|---|:--:|
+| Mais de 2,5 gols (Over 2.5) | {an['p_over25']*100:.0f}% |
+| Menos de 2,5 gols (Under 2.5) | {an['p_under25']*100:.0f}% |
+| Ambos marcam (BTTS) | {an['p_btts']*100:.0f}% |
+| Jogo sem gols (0×0) | {an['p_sem_gols']*100:.0f}% |
+        """)
+
+        # top-5 placares + distribuição do total de gols
+        cc1, cc2 = st.columns(2)
+        with cc1:
+            st.caption("Placares mais prováveis")
+            linhas = ""
+            pmax = an["top_placares"][0][1]
+            for (gi, gj), p in an["top_placares"]:
+                linhas += (
+                    f'<div class="mvm-t" style="display:flex;justify-content:space-between;'
+                    f'align-items:center;margin:3px 0;">'
+                    f'<span>{nm(a)} {gi}×{gj} {nm(b)}</span>'
+                    f'<span style="font-family:Archivo;">{p*100:.0f}%</span></div>'
+                    f'<div class="bar mod"><i style="width:{p/pmax*100:.0f}%"></i></div>'
+                )
+            st.markdown(linhas, unsafe_allow_html=True)
+        with cc2:
+            st.caption("Distribuição do total de gols")
+            dist = an["dist_total_gols"]
+            serie = pd.Series({k: v * 100 for k, v in dist.items()})
+            st.bar_chart(serie, color="#1E1E1E", height=200)
+
+        # leitura automática (narrativa)
+        fav, pfav = (nm(a), an["p_casa"]) if an["p_casa"] >= an["p_fora"] else (nm(b), an["p_fora"])
+        tendencia = "muitos gols" if an["p_over25"] >= 0.5 else "poucos gols"
+        st.markdown(f"""
+        <div class="nota">
+          <b>Leitura do modelo:</b> {fav} é o favorito ({pfav*100:.0f}% de vitória),
+          mas com {an['p_empate']*100:.0f}% de chance de empate o jogo é
+          {'equilibrado' if abs(an['p_casa']-an['p_fora'])<0.12 else 'inclinado'}.
+          O ataque esperado é de {an['xg_casa']:.2f} × {an['xg_fora']:.2f} gols, o que
+          aponta para um jogo de <b>{tendencia}</b> (Over 2,5 = {an['p_over25']*100:.0f}%)
+          e {an['p_btts']*100:.0f}% de chance de ambos marcarem.
+        </div>
+        """, unsafe_allow_html=True)
+
+        # registrar o placar real (só se for um jogo de grupo da Copa)
+        fx_pares = set(zip(fixtures["home_team"], fixtures["away_team"]))
+        if (a, b) in fx_pares:
+            casa_r, fora_r = a, b
+        elif (b, a) in fx_pares:
+            casa_r, fora_r = b, a
+        else:
+            casa_r = None
+
+        if casa_r is not None:
+            with st.expander("📝 Registrar o placar REAL deste jogo (atualiza a previsão)"):
+                atual = live.get((casa_r, fora_r))
+                st.caption(f"Jogo da fase de grupos: {nm(casa_r)} (mandante) × {nm(fora_r)}.")
+                rc1, rc2, rc3 = st.columns([1, 1, 2])
+                with rc1:
+                    gca = st.number_input(f"Gols {nm(casa_r)}", min_value=0, max_value=20,
+                                          value=int(atual[0]) if atual else 0, key="rg_casa")
+                with rc2:
+                    gfo = st.number_input(f"Gols {nm(fora_r)}", min_value=0, max_value=20,
+                                          value=int(atual[1]) if atual else 0, key="rg_fora")
+                with rc3:
+                    st.write("")
+                    st.write("")
+                    if st.button("💾 Salvar placar e recalcular", type="primary"):
+                        upsert_resultado(casa_r, fora_r, gca, gfo)
+                        st.cache_data.clear()
+                        st.rerun()
+                if atual:
+                    st.success(f"Resultado registrado: {nm(casa_r)} {atual[0]}×{atual[1]} {nm(fora_r)}. "
+                               "Todo o ranking já está condicionado a ele.")
 
     # ---- explorador de grupos ----
     st.markdown('<div class="mini-label">Group Explorer · chance de avançar</div>',
@@ -355,8 +489,19 @@ def main():
     st.caption(
         "À medida que os jogos da fase de grupos acontecem, preencha o placar. "
         "A previsão deixa de *sortear* aquele jogo e passa a tratá-lo como fato — "
-        "todo o ranking acima se recalcula condicionado ao que já rolou."
+        "todo o ranking acima se recalcula condicionado ao que já rolou. "
+        "Dica: dá para registrar um jogo por vez, com análise, na seção *Análise de Jogo* acima."
     )
+
+    with st.expander("⚡ Opcional: importar resultados automaticamente (API-Football)"):
+        st.caption("Precisa de uma chave gratuita em dashboard.api-football.com, "
+                   "exportada antes de abrir o dashboard (`export API_FOOTBALL_KEY=...`).")
+        if st.button("Buscar resultados finalizados da Copa"):
+            n, msg = buscar_resultados_api(fixtures)
+            (st.success if n else st.info)(msg)
+            if n:
+                st.cache_data.clear()
+                st.rerun()
 
     grp_de = dict(zip(grupos["selecao"], grupos["grupo"]))
     editor_df = fixtures.copy()
