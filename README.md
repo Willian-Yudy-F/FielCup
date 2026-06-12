@@ -8,6 +8,10 @@
 ![status](https://img.shields.io/badge/status-active-C0392B)
 ![python](https://img.shields.io/badge/python-3.11+-141414)
 
+> 📱 **Ver no celular:** o dashboard é responsivo e pode ser publicado de
+> graça no Streamlit Community Cloud (link público que abre em qualquer
+> aparelho). Passo a passo em [`docs/ACESSO_CELULAR.md`](docs/ACESSO_CELULAR.md).
+
 ## What it answers
 
 **"What is each nation's real chance of winning the World Cup 2026?"**

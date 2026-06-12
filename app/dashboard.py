@@ -210,6 +210,28 @@ CSS = """
 div[data-testid="stMetric"]{background:transparent;border-top:2px solid var(--tinta);padding-top:8px;}
 div[data-testid="stMetricLabel"]{font-family:'Archivo Narrow';text-transform:uppercase;}
 div[data-testid="stMetricValue"]{font-family:'Archivo';font-weight:800;}
+.resumo{background:var(--papel);border:1px solid #B8B4A6;border-left:4px solid var(--vermelho);padding:16px 18px;margin-bottom:14px;}
+.resumo h4{font-family:'Archivo';font-weight:800;font-size:15px;letter-spacing:1px;text-transform:uppercase;color:var(--vermelho);margin:0 0 8px;}
+.resumo p{font-family:'Archivo Narrow';font-size:15px;line-height:1.5;color:var(--tinta);margin:0 0 6px;}
+.resumo b{font-family:'Archivo';font-weight:700;}
+.podio{display:flex;gap:8px;margin-top:10px;}
+.podio div{flex:1;text-align:center;background:var(--grafite);padding:10px 4px;}
+.podio .pp{font-family:'Archivo';font-weight:800;font-size:20px;color:var(--papel);}
+.podio .pn{font-family:'Archivo Narrow';font-size:12px;color:var(--papel);opacity:0.85;text-transform:uppercase;letter-spacing:0.5px;}
+@media (max-width: 640px){
+  .block-container{padding-left:0.5rem;padding-right:0.5rem;}
+  .poster{padding:22px 16px 0;border-left:none;border-right:none;}
+  .titulo{font-size:38px;letter-spacing:-1.5px;}
+  .faixa-meta{font-size:11px;}
+  .palco{margin:18px -16px 0;padding:22px 16px 22px;}
+  .rank{grid-template-columns:24px 1fr auto;gap:8px;padding:9px 0;}
+  .rank-nome{font-size:15px;} .rank-nome .tg{display:none;}
+  .rank-pct,.rank-n{font-size:17px;}
+  .mvm{grid-template-columns:62px 1fr 1fr;gap:4px 6px;}
+  .mvm-t{font-size:12px;} .bar span{font-size:10px;}
+  .sb-sc{font-size:34px;} .sb-cd{font-size:18px;} .sb-nm{font-size:13px;}
+  .resumo p{font-size:14px;} .podio .pp{font-size:17px;}
+}
 </style>
 """
 
@@ -267,6 +289,27 @@ def main():
     for i, r in probs.head(8).iterrows():
         rows += rank_row(i + 1, r["selecao"], r["prob_titulo"],
                          is_br=(r["selecao"] == "Brazil"))
+
+    # ---- RESUMO em linguagem simples (o que importa num relance no celular) ----
+    t3 = probs.head(3).reset_index(drop=True)
+    cond = (f" Isso já considera <b>{len(live)} jogo(s) real(is)</b> da Copa que você registrou."
+            if live else "")
+    podio = "".join(
+        f'<div><div class="pp">{r["prob_titulo"]*100:.0f}%</div>'
+        f'<div class="pn">{nm(r["selecao"])}</div></div>'
+        for _, r in t3.iterrows())
+    st.markdown(f"""
+    <div class="resumo">
+      <h4>📊 O que está acontecendo</h4>
+      <p>Hoje o modelo aponta <b>{nm(t3.loc[0,'selecao'])}</b> como o favorito ao título
+      ({t3.loc[0,'prob_titulo']*100:.0f}% de chance), seguido de
+      <b>{nm(t3.loc[1,'selecao'])}</b> e <b>{nm(t3.loc[2,'selecao'])}</b>.{cond}</p>
+      <p>👉 Quanto <b>maior a %</b>, maior a chance de ser campeão — número obtido
+      <b>simulando a Copa inteira 20 mil vezes</b>. Role para baixo para ver a análise
+      de cada jogo e registrar os resultados.</p>
+      <div class="podio">{podio}</div>
+    </div>
+    """, unsafe_allow_html=True)
 
     st.markdown(f"""
     <div class="poster">
