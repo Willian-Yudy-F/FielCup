@@ -1,8 +1,17 @@
+# Ambiente virtual
 venv/
+.venv/
+env/
+
+# Cache do Python
 __pycache__/
-*.pyc
+*.py[cod]
+*.egg-info/
+
+# Sistema / editor
 .DS_Store
-.env
+.claude/
 *.log
-previa_*.html
-FielCup.md
+
+# Artefatos locais temporários
+/tmp/

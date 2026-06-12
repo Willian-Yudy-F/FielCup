@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>FielCup — Prévia do Dashboard</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Archivo:wght@400;600;800;900&family=Inter:wght@400;500;600&display=swap');
+:root{--verde:#00B86B;--verde-esc:#0A2E1F;--amarelo:#FFD400;--tinta:#0B1411;--nevoa:#6B7B74;--gelo:#F2F5F3;}
+*{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:'Inter',sans-serif;background:var(--tinta);color:var(--gelo);padding:32px;}
+.wrap{max-width:1080px;margin:0 auto;}
+.bloco-hero{background:linear-gradient(135deg,var(--verde-esc) 0%,#06140E 100%);border:1px solid rgba(0,184,107,0.25);border-radius:20px;padding:38px 40px;position:relative;overflow:hidden;}
+.bloco-hero::after{content:"";position:absolute;top:-60px;right:-40px;width:220px;height:220px;border-radius:50%;background:radial-gradient(circle,rgba(255,212,0,0.18),transparent 70%);}
+.eyebrow{font-family:'Archivo';font-weight:800;letter-spacing:3px;text-transform:uppercase;font-size:12px;color:var(--amarelo);}
+.titulo{font-family:'Archivo';font-weight:900;font-size:52px;line-height:1;margin:8px 0 6px;color:#fff;}
+.titulo .cup{color:var(--verde);}
+.sub{color:var(--nevoa);font-size:16px;max-width:620px;line-height:1.5;}
+.metric-chip{display:inline-block;background:rgba(0,184,107,0.12);border:1px solid rgba(0,184,107,0.3);color:var(--verde);padding:4px 12px;border-radius:999px;font-size:13px;font-weight:600;margin-top:14px;}
+.grid{display:grid;grid-template-columns:1.1fr 1fr;gap:28px;margin-top:24px;}
+.sec-titulo{font-family:'Archivo';font-weight:800;font-size:13px;letter-spacing:2px;text-transform:uppercase;color:var(--amarelo);margin-bottom:2px;}
+h3{font-family:'Archivo';font-weight:800;color:#fff;font-size:24px;margin-bottom:14px;}
+.rank-linha{display:flex;align-items:center;gap:14px;padding:11px 8px;border-bottom:1px solid rgba(255,255,255,0.05);}
+.rank-pos{font-family:'Archivo';font-weight:900;font-size:18px;color:var(--nevoa);width:30px;}
+.rank-nome{flex:1;font-weight:600;font-size:16px;}
+.rank-bar-bg{flex:2;height:9px;background:rgba(255,255,255,0.07);border-radius:999px;overflow:hidden;}
+.rank-bar{height:100%;border-radius:999px;background:linear-gradient(90deg,var(--verde),var(--amarelo));}
+.rank-val{font-family:'Archivo';font-weight:800;width:60px;text-align:right;color:#fff;}
+.brasil{background:rgba(255,212,0,0.06);border-radius:10px;border-bottom:1px solid rgba(255,212,0,0.2);}
+.card{background:#0F1C16;border:1px solid rgba(255,255,255,0.06);border-radius:16px;padding:22px 24px;}
+.placar-grande{font-family:'Archivo';font-weight:900;font-size:56px;color:#fff;text-align:center;line-height:1;}
+.vs{color:var(--nevoa);font-size:20px;font-weight:600;}
+.metricas{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-top:16px;}
+.met{background:rgba(255,255,255,0.04);border-radius:12px;padding:14px;text-align:center;}
+.met-label{font-size:12px;color:var(--nevoa);margin-bottom:6px;}
+.met-val{font-family:'Archivo';font-weight:900;font-size:26px;color:#fff;}
+.rodape{color:var(--nevoa);font-size:13px;text-align:center;margin-top:30px;line-height:1.6;}
+.aviso{background:rgba(255,212,0,0.08);border:1px solid rgba(255,212,0,0.2);border-radius:10px;padding:10px 14px;font-size:13px;color:var(--amarelo);margin-bottom:20px;text-align:center;}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="aviso">Prévia estática do dashboard — a versão real é interativa (Streamlit). Aqui você vê só o visual.</div>
+
+  <div class="bloco-hero">
+    <div class="eyebrow">Modelo Dixon-Coles · 50.000 simulações Monte Carlo</div>
+    <div class="titulo">Fiel<span class="cup">Cup</span> 2026</div>
+    <div class="sub">Quem leva a taça? Um modelo estatístico treinado com ~8.000 jogos de seleções projeta cada confronto e simula o torneio inteiro 50 mil vezes para estimar as chances reais de cada país.</div>
+    <span class="metric-chip">★ Favorita do modelo: 🇦🇷 Argentina — 22.2%</span>
+  </div>
+
+  <div class="grid">
+    <div>
+      <div class="sec-titulo">Probabilidade de título</div>
+      <h3>Os favoritos</h3>
+      <div class="rank-linha"><div class="rank-pos">1</div><div class="rank-nome">🇦🇷 Argentina</div><div class="rank-bar-bg"><div class="rank-bar" style="width:89%"></div></div><div class="rank-val">22.2%</div></div>
+      <div class="rank-linha"><div class="rank-pos">2</div><div class="rank-nome">🇪🇸 Espanha</div><div class="rank-bar-bg"><div class="rank-bar" style="width:55%"></div></div><div class="rank-val">13.8%</div></div>
+      <div class="rank-linha"><div class="rank-pos">3</div><div class="rank-nome">🏴 Inglaterra</div><div class="rank-bar-bg"><div class="rank-bar" style="width:31%"></div></div><div class="rank-val">7.6%</div></div>
+      <div class="rank-linha"><div class="rank-pos">4</div><div class="rank-nome">🇲🇦 Marrocos</div><div class="rank-bar-bg"><div class="rank-bar" style="width:23%"></div></div><div class="rank-val">5.7%</div></div>
+      <div class="rank-linha brasil"><div class="rank-pos">5</div><div class="rank-nome">🇧🇷 Brasil</div><div class="rank-bar-bg"><div class="rank-bar" style="width:22%"></div></div><div class="rank-val">5.6%</div></div>
+      <div class="rank-linha"><div class="rank-pos">6</div><div class="rank-nome">🇵🇹 Portugal</div><div class="rank-bar-bg"><div class="rank-bar" style="width:21%"></div></div><div class="rank-val">5.2%</div></div>
+      <div class="rank-linha"><div class="rank-pos">7</div><div class="rank-nome">🇯🇵 Japão</div><div class="rank-bar-bg"><div class="rank-bar" style="width:20%"></div></div><div class="rank-val">5.0%</div></div>
+      <div class="rank-linha"><div class="rank-pos">8</div><div class="rank-nome">🇫🇷 França</div><div class="rank-bar-bg"><div class="rank-bar" style="width:20%"></div></div><div class="rank-val">4.9%</div></div>
+    </div>
+
+    <div>
+      <div class="sec-titulo">Simulador de confronto</div>
+      <h3>Quem ganha?</h3>
+      <div class="card">
+        <div style="display:flex;justify-content:space-between;align-items:center;">
+          <div style="text-align:center;flex:1;"><div style="font-size:34px;">🇧🇷</div><div style="font-weight:600;">Brasil</div></div>
+          <div class="placar-grande">1 <span class="vs">x</span> 2</div>
+          <div style="text-align:center;flex:1;"><div style="font-size:34px;">🇦🇷</div><div style="font-weight:600;">Argentina</div></div>
+        </div>
+        <div style="text-align:center;color:var(--nevoa);font-size:13px;margin-top:6px;">placar mais provável</div>
+      </div>
+      <div class="metricas">
+        <div class="met"><div class="met-label">Vitória Brasil</div><div class="met-val">21%</div></div>
+        <div class="met"><div class="met-label">Empate</div><div class="met-val">30%</div></div>
+        <div class="met"><div class="met-label">Vitória Argentina</div><div class="met-val">49%</div></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="rodape">
+    Modelo Dixon-Coles (Poisson bivariada com decaimento temporal) · validado por backtesting na Copa 2022 (bate o baseline em +7,2% no Brier score).<br>
+    Chaveamento do mata-mata simplificado. Projeto de portfólio, não recomendação de aposta.
+  </div>
+</div>
+</body>
+</html>

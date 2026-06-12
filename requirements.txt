@@ -1,9 +1,10 @@
+# FielCup — dependências do projeto
+# Instale com: pip install -r requirements.txt
+#
+# (sqlite3 já vem na biblioteca padrão do Python — nenhuma dependência extra
+#  é necessária para a camada SQL.)
+
 pandas>=2.0
 numpy>=1.24
 scipy>=1.10
-matplotlib>=3.7
-seaborn>=0.12
-scikit-learn>=1.3
-xgboost>=2.0
 streamlit>=1.30
-jupyter>=1.0

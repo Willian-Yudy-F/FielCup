@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>FielCup — Swiss Poster (mono)</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Archivo:wght@400;500;600;700;800;900&family=Archivo+Narrow:wght@400;500;700&display=swap');
+*{box-sizing:border-box;margin:0;padding:0;}
+:root{
+  --papel:#F2EFE6; --tinta:#141414; --grafite:#1E1E1E;
+  --vermelho:#C0392B; --vermelho-esc:#8E2A20;
+  --linha:#CDC9BC; --nevoa:#8A867A; --prata:#9A968C;
+}
+body{font-family:'Archivo',sans-serif;background:#D8D4C8;color:var(--tinta);padding:28px;display:flex;flex-direction:column;align-items:center;}
+.aviso{max-width:840px;width:100%;background:var(--tinta);color:var(--papel);font-family:'Archivo Narrow';font-size:12px;letter-spacing:2px;text-transform:uppercase;padding:8px;text-align:center;}
+.poster{background:var(--papel);max-width:840px;width:100%;border:1px solid #B8B4A6;box-shadow:0 30px 80px rgba(0,0,0,0.2);padding:44px 48px 0;}
+.topbar{display:flex;justify-content:space-between;align-items:flex-start;}
+.barras{display:flex;gap:6px;margin-bottom:30px;}
+.barras span{display:block;width:46px;height:7px;}
+.b1{background:var(--tinta);} .b2{background:var(--vermelho);} .b3{background:var(--prata);}
+.selo{width:54px;height:30px;border-radius:50%;background:var(--tinta);position:relative;}
+.selo::before{content:"";position:absolute;inset:0;border-radius:50%;border:3px solid var(--papel);}
+.selo::after{content:"";position:absolute;left:50%;top:50%;width:5px;height:5px;background:var(--papel);border-radius:50%;transform:translate(-50%,-50%);box-shadow:0 -8px 0 var(--papel),0 8px 0 var(--papel),-7px -4px 0 var(--papel),7px -4px 0 var(--papel),-7px 4px 0 var(--papel),7px 4px 0 var(--papel);}
+.titulo{font-weight:800;font-size:78px;line-height:0.92;letter-spacing:-3px;margin-bottom:4px;}
+.titulo .cup{color:var(--vermelho);}
+.subtitulo{font-family:'Archivo Narrow';font-weight:400;font-size:15px;color:var(--tinta);text-align:right;line-height:1.3;margin-top:8px;}
+.faixa-meta{font-family:'Archivo Narrow';font-size:13px;letter-spacing:1px;text-transform:uppercase;color:var(--nevoa);margin:6px 0 0;}
+.palco{background:var(--grafite);margin:30px -48px 0;padding:36px 48px 40px;}
+.palco-label{font-family:'Archivo Narrow';font-size:12px;letter-spacing:3px;text-transform:uppercase;color:var(--papel);opacity:0.7;margin-bottom:20px;}
+.rank{display:grid;grid-template-columns:34px 1fr auto;align-items:center;gap:16px;padding:13px 0;border-bottom:1px solid rgba(242,239,230,0.14);}
+.rank:last-child{border-bottom:none;}
+.rank-n{font-weight:800;font-size:24px;color:var(--papel);opacity:0.4;}
+.rank-nome{font-weight:700;font-size:21px;color:var(--papel);letter-spacing:-0.5px;}
+.rank-nome .tag{font-family:'Archivo Narrow';font-weight:400;font-size:12px;letter-spacing:1px;text-transform:uppercase;opacity:0.6;margin-left:8px;}
+.rank-pct{font-weight:800;font-size:24px;color:var(--papel);font-variant-numeric:tabular-nums;}
+.rank.br .rank-nome{color:#fff;}
+.rank.br .rank-pct{color:var(--vermelho);}
+.rank.br{background:rgba(192,57,43,0.14);margin:0 -16px;padding-left:16px;padding-right:16px;border-left:3px solid var(--vermelho);}
+.inferior{display:grid;grid-template-columns:1fr 1fr;gap:0;}
+.bloco-vs{padding:34px 48px 30px;border-right:1px solid var(--linha);margin-left:-48px;padding-left:48px;}
+.bloco-creditos{padding:34px 0 30px 36px;}
+.mini-label{font-family:'Archivo Narrow';font-size:12px;letter-spacing:3px;text-transform:uppercase;color:var(--vermelho);font-weight:700;margin-bottom:18px;}
+.vs-row{display:flex;align-items:center;justify-content:space-between;}
+.vs-team{text-align:center;}
+.vs-flag{font-size:30px;}
+.vs-nm{font-weight:700;font-size:15px;margin-top:2px;}
+.vs-sc{font-weight:800;font-size:50px;letter-spacing:1px;}
+.vs-sc .o{color:var(--vermelho);}
+.vs-x{font-family:'Archivo Narrow';font-size:16px;color:var(--nevoa);padding:0 4px;}
+.odds{display:flex;gap:0;margin-top:20px;border-top:2px solid var(--tinta);}
+.odd{flex:1;text-align:center;padding:12px 4px;border-right:1px solid var(--linha);}
+.odd:last-child{border-right:none;}
+.odd-l{font-family:'Archivo Narrow';font-size:11px;letter-spacing:1px;text-transform:uppercase;color:var(--nevoa);}
+.odd-v{font-weight:800;font-size:26px;margin-top:4px;}
+.odd.win .odd-v{color:var(--vermelho);}
+.nota{font-family:'Archivo Narrow';font-size:13px;line-height:1.55;color:var(--tinta);border-left:3px solid var(--vermelho);padding-left:14px;margin-top:0;}
+.rodape{display:flex;justify-content:space-between;align-items:flex-end;padding:22px 0 30px;border-top:2px solid var(--tinta);}
+.rodape-cred{font-family:'Archivo Narrow';font-size:11px;line-height:1.6;color:var(--nevoa);text-transform:uppercase;letter-spacing:0.5px;}
+.edicao{font-weight:800;font-size:46px;letter-spacing:-2px;color:var(--tinta);}
+</style>
+</head>
+<body>
+<div class="aviso">DESIGN PREVIEW — static mockup · the real app is interactive (Streamlit)</div>
+<div class="poster">
+
+  <div class="topbar">
+    <div class="barras"><span class="b1"></span><span class="b2"></span><span class="b3"></span></div>
+    <div class="selo"></div>
+  </div>
+
+  <div style="display:flex;justify-content:space-between;align-items:flex-end;">
+    <div class="titulo">Fiel<span class="cup">Cup</span><br>Forecast</div>
+    <div class="subtitulo">a Dixon-Coles<br>Monte Carlo<br>model</div>
+  </div>
+  <div class="faixa-meta">World Cup 2026 · 50,000 simulations · validated WC2022</div>
+
+  <div class="palco">
+    <div class="palco-label">Title Probability</div>
+    <div class="rank"><div class="rank-n">1</div><div class="rank-nome">Argentina <span class="tag">holder</span></div><div class="rank-pct">22.2%</div></div>
+    <div class="rank"><div class="rank-n">2</div><div class="rank-nome">Spain <span class="tag">euro champ</span></div><div class="rank-pct">13.8%</div></div>
+    <div class="rank"><div class="rank-n">3</div><div class="rank-nome">England</div><div class="rank-pct">7.6%</div></div>
+    <div class="rank"><div class="rank-n">4</div><div class="rank-nome">Morocco <span class="tag">2022 SF</span></div><div class="rank-pct">5.7%</div></div>
+    <div class="rank br"><div class="rank-n">5</div><div class="rank-nome">Brazil <span class="tag">5× champ</span></div><div class="rank-pct">5.6%</div></div>
+    <div class="rank"><div class="rank-n">6</div><div class="rank-nome">Portugal</div><div class="rank-pct">5.2%</div></div>
+  </div>
+
+  <div class="inferior">
+    <div class="bloco-vs">
+      <div class="mini-label">Matchup Engine</div>
+      <div class="vs-row">
+        <div class="vs-team"><div class="vs-flag">🇧🇷</div><div class="vs-nm">Brazil</div></div>
+        <div class="vs-sc">1<span class="vs-x">v</span><span class="o">2</span></div>
+        <div class="vs-team"><div class="vs-flag">🇦🇷</div><div class="vs-nm">Argentina</div></div>
+      </div>
+      <div class="odds">
+        <div class="odd"><div class="odd-l">Brazil</div><div class="odd-v">21%</div></div>
+        <div class="odd"><div class="odd-l">Draw</div><div class="odd-v">30%</div></div>
+        <div class="odd win"><div class="odd-l">Argentina</div><div class="odd-v">49%</div></div>
+      </div>
+    </div>
+    <div class="bloco-creditos">
+      <div class="mini-label">Read</div>
+      <div class="nota">The model favors Argentina on recent results — the best defensive rating in the field. Bookmakers fade an aging squad. Two valid reads of different evidence.</div>
+    </div>
+  </div>
+
+  <div class="rodape">
+    <div class="rodape-cred">
+      Model · Dixon-Coles<br>
+      Method · Monte Carlo ×50,000<br>
+      Validated · Brier +7.2% vs baseline · Bracket simplified
+    </div>
+    <div class="edicao">/26</div>
+  </div>
+
+</div>
+</body>
+</html>
