@@ -251,7 +251,9 @@ def painel_modelo_vs_mercado(probs):
     times = list(MERCADO.keys())
     vmax = max(max(MERCADO.values()), max(mod.get(t, 0) for t in times)) * 1.1
 
-    linhas = '<div class="mvm"><div class="mvm-h"></div><div class="mvm-h">Modelo</div><div class="mvm-h">Mercado (odds)</div>'
+    h_mod = tr("Modelo", "Model")
+    h_mkt = tr("Mercado (odds)", "Market (odds)")
+    linhas = f'<div class="mvm"><div class="mvm-h"></div><div class="mvm-h">{h_mod}</div><div class="mvm-h">{h_mkt}</div>'
     for t in sorted(times, key=lambda x: -MERCADO[x]):
         pm = mod.get(t, 0.0)
         pk = MERCADO[t]
@@ -264,23 +266,42 @@ def painel_modelo_vs_mercado(probs):
     return linhas
 
 
+LANG = "PT"
+
+
+def tr(pt, en):
+    """Bilíngue: devolve o texto em PT ou EN conforme o idioma escolhido."""
+    return pt if LANG == "PT" else en
+
+
 def main():
+    global LANG
     st.set_page_config(page_title="FielCup Forecast", page_icon="*", layout="centered")
     st.markdown(CSS, unsafe_allow_html=True)
+
+    # ---- seletor de idioma / language switch ----
+    cabec = st.columns([2, 1])
+    with cabec[1]:
+        idioma = st.radio("lang", ["🇧🇷 PT", "🇬🇧 EN"], horizontal=True,
+                          label_visibility="collapsed")
+    LANG = "PT" if "PT" in idioma else "EN"
 
     grupos, talento, fixtures = carregar_estaticos()
     live = ler_resultados_live()
     res_key = tuple(sorted((h, a, gh, ga) for (h, a), (gh, ga) in live.items()))
 
     # ---- controle: botao alpha ----
-    st.markdown('<div class="mini-label">Modelo: resultado &harr; talento</div>',
+    st.markdown(f'<div class="mini-label">{tr("Modelo: resultado &harr; talento", "Model: results &harr; talent")}</div>',
                 unsafe_allow_html=True)
     alpha = st.slider(
-        "ALPHA — peso dos resultados (1.0) vs talento FIFA+elenco (0.0)",
+        tr("ALPHA — peso dos resultados (1.0) vs talento FIFA+elenco (0.0)",
+           "ALPHA — weight of results (1.0) vs FIFA+squad talent (0.0)"),
         min_value=0.0, max_value=1.0, value=0.6, step=0.1,
     )
     if live:
-        st.caption(f"📅 Análise condicionada a {len(live)} resultado(s) real(is) da Copa já digitado(s).")
+        st.caption(tr(
+            f"📅 Análise condicionada a {len(live)} resultado(s) real(is) da Copa já registrado(s).",
+            f"📅 Forecast conditioned on {len(live)} real World Cup result(s) already entered."))
 
     probs = simular_cache(alpha, res_key)
     modelo = modelo_cache(alpha)
@@ -292,41 +313,51 @@ def main():
 
     # ---- RESUMO em linguagem simples (o que importa num relance no celular) ----
     t3 = probs.head(3).reset_index(drop=True)
-    cond = (f" Isso já considera <b>{len(live)} jogo(s) real(is)</b> da Copa que você registrou."
-            if live else "")
+    n1, n2, n3 = nm(t3.loc[0, "selecao"]), nm(t3.loc[1, "selecao"]), nm(t3.loc[2, "selecao"])
+    p1 = t3.loc[0, "prob_titulo"] * 100
+    cond = tr(
+        f" Isso já considera <b>{len(live)} jogo(s) real(is)</b> da Copa que você registrou." if live else "",
+        f" This already accounts for <b>{len(live)} real match(es)</b> you entered." if live else "")
     podio = "".join(
         f'<div><div class="pp">{r["prob_titulo"]*100:.0f}%</div>'
         f'<div class="pn">{nm(r["selecao"])}</div></div>'
         for _, r in t3.iterrows())
-    st.markdown(f"""
-    <div class="resumo">
-      <h4>📊 O que está acontecendo</h4>
-      <p>Hoje o modelo aponta <b>{nm(t3.loc[0,'selecao'])}</b> como o favorito ao título
-      ({t3.loc[0,'prob_titulo']*100:.0f}% de chance), seguido de
-      <b>{nm(t3.loc[1,'selecao'])}</b> e <b>{nm(t3.loc[2,'selecao'])}</b>.{cond}</p>
+    resumo_html = tr(
+        f"""<h4>📊 O que está acontecendo</h4>
+      <p>Hoje o modelo aponta <b>{n1}</b> como o favorito ao título ({p1:.0f}% de chance),
+      seguido de <b>{n2}</b> e <b>{n3}</b>.{cond}</p>
       <p>👉 Quanto <b>maior a %</b>, maior a chance de ser campeão — número obtido
       <b>simulando a Copa inteira 20 mil vezes</b>. Role para baixo para ver a análise
-      de cada jogo e registrar os resultados.</p>
-      <div class="podio">{podio}</div>
-    </div>
-    """, unsafe_allow_html=True)
+      de cada jogo e registrar os resultados.</p>""",
+        f"""<h4>📊 What's going on</h4>
+      <p>The model currently sees <b>{n1}</b> as the title favorite ({p1:.0f}% chance),
+      followed by <b>{n2}</b> and <b>{n3}</b>.{cond}</p>
+      <p>👉 The <b>higher the %</b>, the higher the chance of winning — obtained by
+      <b>simulating the whole World Cup 20,000 times</b>. Scroll down for the per-match
+      analysis and to enter results.</p>""")
+    st.markdown(f'<div class="resumo">{resumo_html}<div class="podio">{podio}</div></div>',
+                unsafe_allow_html=True)
 
+    meta = tr(f"Copa 2026 · 20k Monte Carlo · blend resultado+talento (α={alpha:.1f})",
+              f"World Cup 2026 · 20k Monte Carlo · results+talent blend (α={alpha:.1f})")
+    palco_lbl = tr("Probabilidade de Título · Top 8", "Title Probability · Top 8")
+    mvm_lbl = tr("Modelo vs Mercado · favoritos das casas", "Model vs Market · bookmaker favorites")
     st.markdown(f"""
     <div class="poster">
       <div class="barras"><span class="b1"></span><span class="b2"></span><span class="b3"></span></div>
       <div class="titulo">Fiel<span class="cup">Cup</span> Forecast</div>
-      <div class="faixa-meta">World Cup 2026 · 20k Monte Carlo · blend resultado+talento (α={alpha:.1f})</div>
+      <div class="faixa-meta">{meta}</div>
       <div class="palco">
-        <div class="palco-label">Title Probability · Top 8</div>
+        <div class="palco-label">{palco_lbl}</div>
         {rows}
       </div>
-      <div class="mini-label">Modelo vs Mercado · favoritos das casas</div>
+      <div class="mini-label">{mvm_lbl}</div>
       {painel_modelo_vs_mercado(probs)}
     </div>
     """, unsafe_allow_html=True)
 
     # ---- grafico de barras top 12 ----
-    st.markdown('<div class="mini-label">Probabilidade de título · Top 12</div>',
+    st.markdown(f'<div class="mini-label">{tr("Probabilidade de título · Top 12", "Title probability · Top 12")}</div>',
                 unsafe_allow_html=True)
     top12 = probs.head(12).copy()
     top12["seleção"] = top12["selecao"].map(nm)
@@ -334,42 +365,62 @@ def main():
     st.bar_chart(chart, color="#C0392B", height=280)
 
     # ---- COMO O MODELO PENSA (explicação + cálculo ao vivo) ----
-    st.markdown('<div class="mini-label">Como o modelo chega nesses números</div>',
+    st.markdown(f'<div class="mini-label">{tr("Como o modelo chega nesses números", "How the model gets these numbers")}</div>',
                 unsafe_allow_html=True)
-    with st.expander("Entenda o raciocínio em 4 passos (linguagem simples)", expanded=False):
-        st.markdown("""
+    with st.expander(tr("Entenda o raciocínio em 4 passos (linguagem simples)",
+                        "Understand the reasoning in 4 steps (plain language)"), expanded=False):
+        st.markdown(tr("""
 **A ideia central:** um time é forte por dois motivos que o modelo mistura.
 
 1. **O que ele faz em campo (resultados).** Olhamos ~8.000 jogos de seleções
-   e medimos, para cada uma, uma **força de ataque** (quantos gols costuma
-   fazer) e uma **força de defesa** (quantos costuma evitar). Jogos recentes
-   pesam mais. Isso é o modelo *Dixon-Coles*. Somando ataque + defesa temos a
-   **"força só pelos resultados"**.
+   e medimos uma **força de ataque** (gols que costuma fazer) e uma **força de
+   defesa** (gols que costuma evitar). Jogos recentes pesam mais. É o modelo
+   *Dixon-Coles*. Ataque + defesa = **"força só pelos resultados"**.
 
-2. **O talento que ele tem (mesmo que os resultados ainda não mostrem).**
-   Resultados de seleção escondem o talento individual — por isso a França
-   (cheia de craques) aparecia mal. Então somamos dois sinais externos:
-   o **ranking FIFA** e o **valor de mercado do elenco** (Transfermarkt).
-   Juntos formam o **"índice de talento"**.
+2. **O talento que ele tem (mesmo que os resultados não mostrem).** Resultados
+   de seleção escondem o talento individual — por isso a França aparecia mal.
+   Somamos dois sinais externos: o **ranking FIFA** e o **valor de mercado do
+   elenco** (Transfermarkt). Juntos formam o **"índice de talento"**.
 
-3. **A mistura (o botão α).** A força final é uma média ponderada:
-   `força = α × resultados + (1−α) × talento`. Com **α=1** vale só o que
-   aconteceu em campo (a Argentina dispara); diminuindo α, o talento entra e
-   **França, Espanha e Inglaterra sobem** — perto do que as casas de aposta dizem.
+3. **A mistura (o botão α).** Força final = `α × resultados + (1−α) × talento`.
+   Com **α=1** vale só o que aconteceu em campo (Argentina dispara); diminuindo
+   α, o talento entra e **França, Espanha e Inglaterra sobem**.
 
-4. **Jogar a Copa 50 mil vezes.** Com a força final de cada time, sorteamos
-   o placar de cada jogo milhares de vezes (grupos + mata-mata). A
-   **probabilidade de título** é simplesmente *em quantas dessas 50 mil Copas
-   o time levantou a taça*.
+4. **Jogar a Copa 50 mil vezes.** Com a força final, sorteamos o placar de cada
+   jogo milhares de vezes (grupos + mata-mata). A **probabilidade de título** é
+   *em quantas dessas Copas o time foi campeão*.
 
-> Para comparar times de "réguas" diferentes (gols, pontos FIFA, euros),
-> tudo é convertido para **z-score**: quantos desvios-padrão acima (+) ou
-> abaixo (−) da média o time está. Por isso os números aparecem como +1,2 / −0,4.
-        """)
+> Para comparar réguas diferentes (gols, pontos FIFA, euros), tudo vira
+> **z-score**: quantos desvios-padrão acima (+) ou abaixo (−) da média.
+        """, """
+**Core idea:** a team is strong for two reasons the model blends together.
+
+1. **What it does on the pitch (results).** We look at ~8,000 national-team
+   matches and measure an **attack strength** (goals it tends to score) and a
+   **defense strength** (goals it tends to prevent). Recent games weigh more.
+   That's the *Dixon-Coles* model. Attack + defense = **"results-only strength"**.
+
+2. **The talent it has (even if results don't show it yet).** National-team
+   results hide individual talent — that's why France looked weak. We add two
+   external signals: the **FIFA ranking** and the **squad market value**
+   (Transfermarkt). Together they form the **"talent index"**.
+
+3. **The blend (the α knob).** Final strength = `α × results + (1−α) × talent`.
+   At **α=1** only on-pitch results count (Argentina runs away); lowering α
+   brings talent in and **France, Spain and England rise**.
+
+4. **Playing the World Cup 50,000 times.** With each team's final strength, we
+   sample every match's score thousands of times (groups + knockout). The
+   **title probability** is *in how many of those Cups the team won it*.
+
+> To compare different scales (goals, FIFA points, euros), everything becomes a
+> **z-score**: how many standard deviations above (+) or below (−) the mean.
+        """))
 
     det = detalhe_cache(alpha)
     nomes_ord = det["selecao"].tolist()
-    escolha = st.selectbox("Veja a conta de um time específico:", nomes_ord,
+    escolha = st.selectbox(tr("Veja a conta de um time específico:",
+                              "See the math for a specific team:"), nomes_ord,
                            index=nomes_ord.index("France") if "France" in nomes_ord else 0,
                            format_func=nm)
     d = det[det["selecao"] == escolha].iloc[0]
@@ -377,39 +428,50 @@ def main():
     prob_t = probs[probs["selecao"] == escolha]["prob_titulo"]
     prob_t = float(prob_t.iloc[0]) * 100 if not prob_t.empty else 0.0
 
+    h = tr(["Passo", "Ingrediente", "Valor", "Em z-score"],
+           ["Step", "Ingredient", "Value", "As z-score"])
+    L = tr(["Ataque (Dixon-Coles)", "Defesa (Dixon-Coles)", "Força só pelos resultados",
+            "Ranking FIFA", "Valor do elenco", "Índice de talento", "Força final → posição"],
+           ["Attack (Dixon-Coles)", "Defense (Dixon-Coles)", "Results-only strength",
+            "FIFA ranking", "Squad value", "Talent index", "Final strength → rank"])
+    pts = tr("pts", "pts")
     st.markdown(f"""
-| Passo | Ingrediente | Valor | Em z-score |
+| {h[0]} | {h[1]} | {h[2]} | {h[3]} |
 |---|---|---:|---:|
-| 1 | Ataque (Dixon-Coles) | {d['ataque']:+.2f} | — |
-| 1 | Defesa (Dixon-Coles) | {d['defesa']:+.2f} | — |
-| 1 | **Força só pelos resultados** | **{d['forca_dc']:+.2f}** | **{d['z_resultado']:+.2f}** |
-| 2 | Ranking FIFA | {d['fifa_points']:.0f} pts | {d['z_fifa']:+.2f} |
-| 2 | Valor do elenco | €{d['valor_mi']:.0f} mi | {d['z_valor']:+.2f} |
-| 2 | **Índice de talento** | — | **{d['indice_talento']:+.2f}** |
+| 1 | {L[0]} | {d['ataque']:+.2f} | — |
+| 1 | {L[1]} | {d['defesa']:+.2f} | — |
+| 1 | **{L[2]}** | **{d['forca_dc']:+.2f}** | **{d['z_resultado']:+.2f}** |
+| 2 | {L[3]} | {d['fifa_points']:.0f} {pts} | {d['z_fifa']:+.2f} |
+| 2 | {L[4]} | €{d['valor_mi']:.0f} mi | {d['z_valor']:+.2f} |
+| 2 | **{L[5]}** | — | **{d['indice_talento']:+.2f}** |
 | 3 | **Blend** = {alpha:.1f}×({d['z_resultado']:+.2f}) + {1-alpha:.1f}×({d['indice_talento']:+.2f}) | — | **{d['blend']:+.2f}** |
-| 4 | **Força final → posição** | **{pos_final}º** | **{d['forca_final']:+.2f}** |
+| 4 | **{L[6]}** | **{pos_final}º** | **{d['forca_final']:+.2f}** |
 
-**Em palavras:** com α={alpha:.1f}, {nm(escolha)} tem força de resultados
+{tr(f'''**Em palavras:** com α={alpha:.1f}, {nm(escolha)} tem força de resultados
 {d['z_resultado']:+.2f} e talento {d['indice_talento']:+.2f}. A mistura dá
-{d['blend']:+.2f}, o que coloca o time em **{pos_final}º** na força e resulta em
-**{prob_t:.1f}% de chance de título** nas 20 mil simulações.
+{d['blend']:+.2f}, colocando o time em **{pos_final}º** na força, o que resulta em
+**{prob_t:.1f}% de chance de título** nas 20 mil simulações.''',
+f'''**In words:** at α={alpha:.1f}, {nm(escolha)} has results strength
+{d['z_resultado']:+.2f} and talent {d['indice_talento']:+.2f}. The blend gives
+{d['blend']:+.2f}, ranking the team **#{pos_final}** in strength, which yields a
+**{prob_t:.1f}% title chance** across the 20,000 simulations.''')}
     """)
 
     # ---- ANÁLISE DE JOGO (leitura estatística completa) ----
-    st.markdown('<div class="mini-label">Análise de Jogo · a leitura estatística</div>',
+    st.markdown(f'<div class="mini-label">{tr("Análise de Jogo · a leitura estatística", "Match Analysis · the statistical read")}</div>',
                 unsafe_allow_html=True)
     teams = sorted(grupos["selecao"], key=nm)
     labels = {f"{nm(t)}": t for t in teams}
     keys = list(labels)
     c1, c2 = st.columns(2)
     with c1:
-        la = st.selectbox("Time A", keys, index=keys.index("Brazil") if "Brazil" in keys else 0)
+        la = st.selectbox(tr("Time A", "Team A"), keys, index=keys.index("Brazil") if "Brazil" in keys else 0)
     with c2:
-        lb = st.selectbox("Time B", keys, index=keys.index("France") if "France" in keys else 1)
+        lb = st.selectbox(tr("Time B", "Team B"), keys, index=keys.index("France") if "France" in keys else 1)
     a, b = labels[la], labels[lb]
 
     if a == b:
-        st.warning("Escolha dois times diferentes.")
+        st.warning(tr("Escolha dois times diferentes.", "Pick two different teams."))
     else:
         an = analisar_jogo(modelo, a, b, neutro=True)
         i, j = an["placar_provavel"]
@@ -421,35 +483,43 @@ def main():
           <div class="sb-sc">{i}<span class="sb-x">v</span><span class="o">{j}</span></div>
           <div class="sb-team"><div class="sb-cd">{cd(b)}</div><div class="sb-nm">{nm(b)}</div></div>
         </div>
-        <div class="cap">placar mais provável · α={alpha:.1f}</div>
+        <div class="cap">{tr("placar mais provável", "most likely scoreline")} · α={alpha:.1f}</div>
         """, unsafe_allow_html=True)
 
         # 1X2
         d1, d2, d3 = st.columns(3)
-        d1.metric(f"{nm(a)} vence", f"{an['p_casa']*100:.0f}%")
-        d2.metric("Empate", f"{an['p_empate']*100:.0f}%")
-        d3.metric(f"{nm(b)} vence", f"{an['p_fora']*100:.0f}%")
+        d1.metric(tr(f"{nm(a)} vence", f"{nm(a)} win"), f"{an['p_casa']*100:.0f}%")
+        d2.metric(tr("Empate", "Draw"), f"{an['p_empate']*100:.0f}%")
+        d3.metric(tr(f"{nm(b)} vence", f"{nm(b)} win"), f"{an['p_fora']*100:.0f}%")
 
         # quadro de indicadores principais
+        ind = tr(["Indicador estatístico", "Gols esperados (xG)", "Probabilidade de vencer",
+                  "Não sofrer gol (clean sheet)", "Mercado de gols", "Probabilidade",
+                  "Mais de 2,5 gols (Over 2.5)", "Menos de 2,5 gols (Under 2.5)",
+                  "Ambos marcam (BTTS)", "Jogo sem gols (0×0)"],
+                 ["Statistical indicator", "Expected goals (xG)", "Win probability",
+                  "Clean sheet", "Goals market", "Probability",
+                  "Over 2.5 goals", "Under 2.5 goals",
+                  "Both teams to score (BTTS)", "No goals (0×0)"])
         st.markdown(f"""
-| Indicador estatístico | {nm(a)} | {nm(b)} |
+| {ind[0]} | {nm(a)} | {nm(b)} |
 |---|:--:|:--:|
-| **Gols esperados (xG)** | **{an['xg_casa']:.2f}** | **{an['xg_fora']:.2f}** |
-| Probabilidade de vencer | {an['p_casa']*100:.0f}% | {an['p_fora']*100:.0f}% |
-| Não sofrer gol (clean sheet) | {an['cs_casa']*100:.0f}% | {an['cs_fora']*100:.0f}% |
+| **{ind[1]}** | **{an['xg_casa']:.2f}** | **{an['xg_fora']:.2f}** |
+| {ind[2]} | {an['p_casa']*100:.0f}% | {an['p_fora']*100:.0f}% |
+| {ind[3]} | {an['cs_casa']*100:.0f}% | {an['cs_fora']*100:.0f}% |
 
-| Mercado de gols | Probabilidade |
+| {ind[4]} | {ind[5]} |
 |---|:--:|
-| Mais de 2,5 gols (Over 2.5) | {an['p_over25']*100:.0f}% |
-| Menos de 2,5 gols (Under 2.5) | {an['p_under25']*100:.0f}% |
-| Ambos marcam (BTTS) | {an['p_btts']*100:.0f}% |
-| Jogo sem gols (0×0) | {an['p_sem_gols']*100:.0f}% |
+| {ind[6]} | {an['p_over25']*100:.0f}% |
+| {ind[7]} | {an['p_under25']*100:.0f}% |
+| {ind[8]} | {an['p_btts']*100:.0f}% |
+| {ind[9]} | {an['p_sem_gols']*100:.0f}% |
         """)
 
         # top-5 placares + distribuição do total de gols
         cc1, cc2 = st.columns(2)
         with cc1:
-            st.caption("Placares mais prováveis")
+            st.caption(tr("Placares mais prováveis", "Most likely scorelines"))
             linhas = ""
             pmax = an["top_placares"][0][1]
             for (gi, gj), p in an["top_placares"]:
@@ -462,24 +532,29 @@ def main():
                 )
             st.markdown(linhas, unsafe_allow_html=True)
         with cc2:
-            st.caption("Distribuição do total de gols")
+            st.caption(tr("Distribuição do total de gols", "Total goals distribution"))
             dist = an["dist_total_gols"]
             serie = pd.Series({k: v * 100 for k, v in dist.items()})
             st.bar_chart(serie, color="#1E1E1E", height=200)
 
         # leitura automática (narrativa)
         fav, pfav = (nm(a), an["p_casa"]) if an["p_casa"] >= an["p_fora"] else (nm(b), an["p_fora"])
-        tendencia = "muitos gols" if an["p_over25"] >= 0.5 else "poucos gols"
-        st.markdown(f"""
-        <div class="nota">
-          <b>Leitura do modelo:</b> {fav} é o favorito ({pfav*100:.0f}% de vitória),
-          mas com {an['p_empate']*100:.0f}% de chance de empate o jogo é
-          {'equilibrado' if abs(an['p_casa']-an['p_fora'])<0.12 else 'inclinado'}.
-          O ataque esperado é de {an['xg_casa']:.2f} × {an['xg_fora']:.2f} gols, o que
-          aponta para um jogo de <b>{tendencia}</b> (Over 2,5 = {an['p_over25']*100:.0f}%)
-          e {an['p_btts']*100:.0f}% de chance de ambos marcarem.
-        </div>
-        """, unsafe_allow_html=True)
+        equilibrio_pt = "equilibrado" if abs(an["p_casa"] - an["p_fora"]) < 0.12 else "inclinado para um lado"
+        equilibrio_en = "balanced" if abs(an["p_casa"] - an["p_fora"]) < 0.12 else "leaning to one side"
+        tend_pt = "muitos gols" if an["p_over25"] >= 0.5 else "poucos gols"
+        tend_en = "many goals" if an["p_over25"] >= 0.5 else "few goals"
+        nota_html = tr(
+            f"""<b>Leitura do modelo:</b> {fav} é o favorito ({pfav*100:.0f}% de vitória),
+          mas com {an['p_empate']*100:.0f}% de chance de empate o jogo é {equilibrio_pt}.
+          O ataque esperado é {an['xg_casa']:.2f} × {an['xg_fora']:.2f} gols, apontando para
+          um jogo de <b>{tend_pt}</b> (Over 2,5 = {an['p_over25']*100:.0f}%) e
+          {an['p_btts']*100:.0f}% de chance de ambos marcarem.""",
+            f"""<b>Model read:</b> {fav} is the favorite ({pfav*100:.0f}% to win),
+          but with a {an['p_empate']*100:.0f}% draw chance the game is {equilibrio_en}.
+          Expected attack is {an['xg_casa']:.2f} × {an['xg_fora']:.2f} goals, pointing to a
+          <b>{tend_en}</b> game (Over 2.5 = {an['p_over25']*100:.0f}%) and a
+          {an['p_btts']*100:.0f}% chance both teams score.""")
+        st.markdown(f'<div class="nota">{nota_html}</div>', unsafe_allow_html=True)
 
         # registrar o placar real (só se for um jogo de grupo da Copa)
         fx_pares = set(zip(fixtures["home_team"], fixtures["away_team"]))
@@ -491,55 +566,71 @@ def main():
             casa_r = None
 
         if casa_r is not None:
-            with st.expander("📝 Registrar o placar REAL deste jogo (atualiza a previsão)"):
+            with st.expander(tr("📝 Registrar o placar REAL deste jogo (atualiza a previsão)",
+                                "📝 Enter the REAL score of this match (updates the forecast)")):
                 atual = live.get((casa_r, fora_r))
-                st.caption(f"Jogo da fase de grupos: {nm(casa_r)} (mandante) × {nm(fora_r)}.")
+                st.caption(tr(f"Jogo da fase de grupos: {nm(casa_r)} (mandante) × {nm(fora_r)}.",
+                              f"Group-stage match: {nm(casa_r)} (home) × {nm(fora_r)}."))
                 rc1, rc2, rc3 = st.columns([1, 1, 2])
                 with rc1:
-                    gca = st.number_input(f"Gols {nm(casa_r)}", min_value=0, max_value=20,
+                    gca = st.number_input(tr(f"Gols {nm(casa_r)}", f"{nm(casa_r)} goals"),
+                                          min_value=0, max_value=20,
                                           value=int(atual[0]) if atual else 0, key="rg_casa")
                 with rc2:
-                    gfo = st.number_input(f"Gols {nm(fora_r)}", min_value=0, max_value=20,
+                    gfo = st.number_input(tr(f"Gols {nm(fora_r)}", f"{nm(fora_r)} goals"),
+                                          min_value=0, max_value=20,
                                           value=int(atual[1]) if atual else 0, key="rg_fora")
                 with rc3:
                     st.write("")
                     st.write("")
-                    if st.button("💾 Salvar placar e recalcular", type="primary"):
+                    if st.button(tr("💾 Salvar placar e recalcular", "💾 Save score and recalculate"),
+                                 type="primary"):
                         upsert_resultado(casa_r, fora_r, gca, gfo)
                         st.cache_data.clear()
                         st.rerun()
                 if atual:
-                    st.success(f"Resultado registrado: {nm(casa_r)} {atual[0]}×{atual[1]} {nm(fora_r)}. "
-                               "Todo o ranking já está condicionado a ele.")
+                    st.success(tr(
+                        f"Resultado registrado: {nm(casa_r)} {atual[0]}×{atual[1]} {nm(fora_r)}. "
+                        "Todo o ranking já está condicionado a ele.",
+                        f"Result saved: {nm(casa_r)} {atual[0]}×{atual[1]} {nm(fora_r)}. "
+                        "The whole ranking is now conditioned on it."))
 
     # ---- explorador de grupos ----
-    st.markdown('<div class="mini-label">Group Explorer · chance de avançar</div>',
+    st.markdown(f'<div class="mini-label">{tr("Explorador de Grupos · chance de avançar", "Group Explorer · chance to advance")}</div>',
                 unsafe_allow_html=True)
-    letra = st.selectbox("Grupo", sorted(grupos["grupo"].unique()))
+    letra = st.selectbox(tr("Grupo", "Group"), sorted(grupos["grupo"].unique()))
     times_g = grupos[grupos["grupo"] == letra]["selecao"].tolist()
     tab = probs[probs["selecao"].isin(times_g)][
         ["selecao", "prob_grupo", "prob_quartas", "prob_titulo"]
     ].copy()
     tab["selecao"] = tab["selecao"].map(nm)
-    tab.columns = ["Seleção", "Avança", "Quartas", "Título"]
-    for c in ["Avança", "Quartas", "Título"]:
+    tab.columns = tr(["Seleção", "Avança", "Quartas", "Título"],
+                     ["Team", "Advance", "Quarters", "Title"])
+    for c in tab.columns[1:]:
         tab[c] = (tab[c] * 100).map(lambda x: f"{x:.1f}%")
     st.dataframe(tab, hide_index=True, use_container_width=True)
 
     # ---- ATUALIZAR DURANTE A COPA ----
-    st.markdown('<div class="mini-label">Durante a Copa · digite os resultados reais</div>',
+    st.markdown(f'<div class="mini-label">{tr("Durante a Copa · digite os resultados reais", "During the World Cup · enter the real results")}</div>',
                 unsafe_allow_html=True)
-    st.caption(
+    st.caption(tr(
         "À medida que os jogos da fase de grupos acontecem, preencha o placar. "
         "A previsão deixa de *sortear* aquele jogo e passa a tratá-lo como fato — "
         "todo o ranking acima se recalcula condicionado ao que já rolou. "
-        "Dica: dá para registrar um jogo por vez, com análise, na seção *Análise de Jogo* acima."
-    )
+        "Dica: dá para registrar um jogo por vez, com análise, na seção *Análise de Jogo* acima.",
+        "As group-stage games are played, fill in the score. The forecast stops "
+        "*simulating* that match and treats it as a fact — the whole ranking above "
+        "recomputes conditioned on what already happened. "
+        "Tip: you can enter one match at a time, with analysis, in *Match Analysis* above."))
 
-    with st.expander("⚡ Opcional: importar resultados automaticamente (API-Football)"):
-        st.caption("Precisa de uma chave gratuita em dashboard.api-football.com, "
-                   "exportada antes de abrir o dashboard (`export API_FOOTBALL_KEY=...`).")
-        if st.button("Buscar resultados finalizados da Copa"):
+    with st.expander(tr("⚡ Opcional: importar resultados automaticamente (API-Football)",
+                        "⚡ Optional: import results automatically (API-Football)")):
+        st.caption(tr(
+            "Precisa de uma chave gratuita em dashboard.api-football.com, exportada "
+            "antes de abrir o dashboard (`export API_FOOTBALL_KEY=...`).",
+            "Needs a free key from dashboard.api-football.com, exported before "
+            "launching the dashboard (`export API_FOOTBALL_KEY=...`)."))
+        if st.button(tr("Buscar resultados finalizados da Copa", "Fetch finished World Cup results")):
             n, msg = buscar_resultados_api(fixtures)
             (st.success if n else st.info)(msg)
             if n:
@@ -563,23 +654,26 @@ def main():
         use_container_width=True,
         height=320,
         column_config={
-            "Grupo": st.column_config.TextColumn(disabled=True, width="small"),
-            "Casa": st.column_config.TextColumn(disabled=True),
-            "Fora": st.column_config.TextColumn(disabled=True),
-            "Gols casa": st.column_config.NumberColumn(min_value=0, max_value=20, step=1),
-            "Gols fora": st.column_config.NumberColumn(min_value=0, max_value=20, step=1),
+            "Grupo": st.column_config.TextColumn(tr("Grupo", "Group"), disabled=True, width="small"),
+            "Casa": st.column_config.TextColumn(tr("Casa", "Home"), disabled=True),
+            "Fora": st.column_config.TextColumn(tr("Fora", "Away"), disabled=True),
+            "Gols casa": st.column_config.NumberColumn(tr("Gols casa", "Home goals"),
+                                                       min_value=0, max_value=20, step=1),
+            "Gols fora": st.column_config.NumberColumn(tr("Gols fora", "Away goals"),
+                                                       min_value=0, max_value=20, step=1),
         },
         key="editor_resultados",
     )
 
     cb1, cb2 = st.columns([1, 1])
     with cb1:
-        if st.button("💾 Salvar e recalcular", use_container_width=True, type="primary"):
+        if st.button(tr("💾 Salvar e recalcular", "💾 Save and recalculate"),
+                     use_container_width=True, type="primary"):
             salvar_resultados_live(edit)
             st.cache_data.clear()
             st.rerun()
     with cb2:
-        if st.button("↺ Limpar resultados", use_container_width=True):
+        if st.button(tr("↺ Limpar resultados", "↺ Clear results"), use_container_width=True):
             db.salvar_df(pd.DataFrame(
                 columns=["home_team", "away_team", "home_score", "away_score"]),
                 "live_results")
@@ -590,20 +684,28 @@ def main():
     top = probs.iloc[0]["selecao"]
     fr = probs[probs["selecao"] == "France"]
     fr_pos = (probs["selecao"] == "France").idxmax() + 1 if not fr.empty else "-"
-    st.markdown(f"""
-    <div class="nota">
-      Com α={alpha:.1f}, o modelo favorece {nm(top)} e coloca a França em {fr_pos}º.
-      O botão α mistura o que o Dixon-Coles mede nos resultados com o talento que
+    nota_final = tr(
+        f"""Com α={alpha:.1f}, o modelo favorece {nm(top)} e coloca a França em {fr_pos}º.
+      O botão α mistura o que o Dixon-Coles mede nos resultados com o talento a que
       ele é cego (ranking FIFA + valor de elenco). α=1 reproduz o modelo antigo
       (Argentina disparada); reduzir α aproxima do consenso das casas (Espanha,
-      França e Inglaterra sobem).
-    </div>
+      França e Inglaterra sobem).""",
+        f"""At α={alpha:.1f}, the model favors {nm(top)} and ranks France {fr_pos}th.
+      The α knob blends what Dixon-Coles measures in results with the talent it's
+      blind to (FIFA ranking + squad value). α=1 reproduces the old model
+      (Argentina running away); lowering α moves toward the bookmaker consensus
+      (Spain, France and England rise).""")
+    cred = tr(
+        "Modelo · Dixon-Coles + blend de talento (α)<br>"
+        "Método · Monte Carlo · dados em SQLite<br>"
+        "Validado · Brier +5.2% vs baseline · bracket simplificado",
+        "Model · Dixon-Coles + talent blend (α)<br>"
+        "Method · Monte Carlo · data in SQLite<br>"
+        "Validated · Brier +5.2% vs baseline · simplified bracket")
+    st.markdown(f"""
+    <div class="nota">{nota_final}</div>
     <div class="rodape">
-      <div class="rodape-cred">
-        Model · Dixon-Coles + blend de talento (α)<br>
-        Method · Monte Carlo · dados em SQLite<br>
-        Validated · Brier +5.2% vs baseline · bracket simplificado
-      </div>
+      <div class="rodape-cred">{cred}</div>
       <div class="edicao">/26</div>
     </div>
     """, unsafe_allow_html=True)

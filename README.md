@@ -21,18 +21,27 @@
 ![sql](https://img.shields.io/badge/SQL-SQLite-003B57)
 ![streamlit](https://img.shields.io/badge/dashboard-Streamlit-C0392B)
 
-### 📱 Como fica na tela
+### 📱 Como fica na tela · How it looks · 🇧🇷 PT / 🇬🇧 EN
+
+O dashboard é **bilíngue**: um botão **🇧🇷 PT / 🇬🇧 EN** no topo troca todo o
+texto entre português e inglês. / *The dashboard is **bilingual**: a
+**🇧🇷 PT / 🇬🇧 EN** switch at the top toggles the whole UI.*
 
 <p align="center">
-  <img src="docs/img/dashboard_mobile.png" width="270" alt="FielCup no celular — resumo e ranking"/>
-  &nbsp;&nbsp;&nbsp;
-  <img src="docs/img/analise_jogo.png" width="430" alt="Análise estatística de cada jogo"/>
+  <img src="docs/img/dashboard_mobile.png" width="250" alt="FielCup no celular (PT)"/>
+  &nbsp;&nbsp;
+  <img src="docs/img/dashboard_en.png" width="250" alt="FielCup on mobile (EN)"/>
+</p>
+<p align="center">
+  <img src="docs/img/analise_jogo.png" width="500" alt="Análise estatística de cada jogo / per-match statistical analysis"/>
 </p>
 
 <p align="center">
-  <sub>À esquerda, a visão no celular (resumo + ranking de favoritos). À direita,
-  a análise estatística de um jogo: gols esperados (xG), probabilidades,
-  over/under, ambos marcam, e a conta passo a passo de cada número.</sub>
+  <sub>📱 Visão no celular em PT e EN (resumo + ranking de favoritos). Abaixo, a
+  análise estatística de um jogo: gols esperados (xG), probabilidades, over/under,
+  ambos marcam, e a conta passo a passo de cada número.<br>
+  <i>Mobile view in PT and EN. Below, the per-match statistical read: expected
+  goals (xG), win/draw/loss, over/under, BTTS, and the step-by-step math.</i></sub>
 </p>
 
 > ⚠️ O link acima fica ativo **depois** que você fizer o deploy (1x, ~2 min).
