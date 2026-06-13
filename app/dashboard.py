@@ -143,7 +143,7 @@ def buscar_resultados_api(fixtures: pd.DataFrame):
 
 
 @st.cache_data(show_spinner="Simulando a Copa...")
-def simular_cache(alpha: float, res_key: tuple, sims: int = 20000):
+def simular_cache(alpha: float, res_key: tuple, sims: int = 8000):
     """Roda a simulacao. Cacheado por (alpha, resultados, sims).
 
     res_key é uma tupla hashável dos placares reais já conhecidos.
@@ -327,19 +327,19 @@ def main():
       <p>Hoje o modelo aponta <b>{n1}</b> como o favorito ao título ({p1:.0f}% de chance),
       seguido de <b>{n2}</b> e <b>{n3}</b>.{cond}</p>
       <p>👉 Quanto <b>maior a %</b>, maior a chance de ser campeão — número obtido
-      <b>simulando a Copa inteira 20 mil vezes</b>. Role para baixo para ver a análise
+      <b>simulando a Copa inteira 8 mil vezes</b>. Role para baixo para ver a análise
       de cada jogo e registrar os resultados.</p>""",
         f"""<h4>📊 What's going on</h4>
       <p>The model currently sees <b>{n1}</b> as the title favorite ({p1:.0f}% chance),
       followed by <b>{n2}</b> and <b>{n3}</b>.{cond}</p>
       <p>👉 The <b>higher the %</b>, the higher the chance of winning — obtained by
-      <b>simulating the whole World Cup 20,000 times</b>. Scroll down for the per-match
+      <b>simulating the whole World Cup 8,000 times</b>. Scroll down for the per-match
       analysis and to enter results.</p>""")
     st.markdown(f'<div class="resumo">{resumo_html}<div class="podio">{podio}</div></div>',
                 unsafe_allow_html=True)
 
-    meta = tr(f"Copa 2026 · 20k Monte Carlo · blend resultado+talento (α={alpha:.1f})",
-              f"World Cup 2026 · 20k Monte Carlo · results+talent blend (α={alpha:.1f})")
+    meta = tr(f"Copa 2026 · 8k Monte Carlo · blend resultado+talento (α={alpha:.1f})",
+              f"World Cup 2026 · 8k Monte Carlo · results+talent blend (α={alpha:.1f})")
     palco_lbl = tr("Probabilidade de Título · Top 8", "Title Probability · Top 8")
     mvm_lbl = tr("Modelo vs Mercado · favoritos das casas", "Model vs Market · bookmaker favorites")
     st.markdown(f"""
@@ -450,11 +450,11 @@ def main():
 {tr(f'''**Em palavras:** com α={alpha:.1f}, {nm(escolha)} tem força de resultados
 {d['z_resultado']:+.2f} e talento {d['indice_talento']:+.2f}. A mistura dá
 {d['blend']:+.2f}, colocando o time em **{pos_final}º** na força, o que resulta em
-**{prob_t:.1f}% de chance de título** nas 20 mil simulações.''',
+**{prob_t:.1f}% de chance de título** nas 8 mil simulações.''',
 f'''**In words:** at α={alpha:.1f}, {nm(escolha)} has results strength
 {d['z_resultado']:+.2f} and talent {d['indice_talento']:+.2f}. The blend gives
 {d['blend']:+.2f}, ranking the team **#{pos_final}** in strength, which yields a
-**{prob_t:.1f}% title chance** across the 20,000 simulations.''')}
+**{prob_t:.1f}% title chance** across the 8,000 simulations.''')}
     """)
 
     # ---- ANÁLISE DE JOGO (leitura estatística completa) ----
