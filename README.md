@@ -1,3 +1,16 @@
+---
+title: FielCup
+emoji: ⚽
+colorFrom: red
+colorTo: gray
+sdk: streamlit
+app_file: app/dashboard.py
+python_version: "3.12"
+pinned: false
+license: mit
+short_description: Previsão estatística da Copa 2026 (Dixon-Coles + talento)
+---
+
 # FielCup — Quem vai ganhar a Copa de 2026? ⚽
 
 > Um modelo estatístico que prevê cada jogo da Copa 2026 e **simula o torneio
