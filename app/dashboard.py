@@ -712,4 +712,12 @@ f'''**In words:** at α={alpha:.1f}, {nm(escolha)} has results strength
 
 
 if __name__ == "__main__":
-    main()
+    try:
+        main()
+    except Exception as _e:
+        # Em vez de tela em branco, mostra o erro real (essencial p/ debug na nuvem).
+        try:
+            st.error("⚠️ O dashboard encontrou um erro ao carregar. Detalhes abaixo:")
+            st.exception(_e)
+        except Exception:
+            raise

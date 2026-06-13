@@ -24,10 +24,14 @@ Uso:
 
 from pathlib import Path
 import json
+import math
 import numpy as np
 import pandas as pd
-from scipy.optimize import minimize
-from scipy.special import gammaln  # log(k!) = gammaln(k+1), estável
+
+# IMPORTANTE: o scipy só é necessário para TREINAR o modelo. A previsão
+# (usada pelo dashboard) roda em numpy puro. Por isso o scipy é importado
+# de forma "preguiçosa" (lazy) dentro das funções de treino — assim o
+# dashboard na nuvem não carrega o scipy, economizando memória e tempo.
 
 RAIZ = Path(__file__).resolve().parents[1]
 TREINO = RAIZ / "data" / "processed" / "treino.csv"
@@ -44,6 +48,7 @@ def _log_poisson(k, lam):
     Usar o logaritmo (em vez da probabilidade direta) evita problemas
     numéricos quando multiplicamos milhares de probabilidades.
     """
+    from scipy.special import gammaln  # lazy: só no treino
     return k * np.log(lam) - lam - gammaln(k + 1)
 
 
@@ -140,6 +145,7 @@ def treinar(df: pd.DataFrame) -> dict:
     # restrição de identificabilidade: soma dos ataques = 0
     restricoes = ({"type": "eq", "fun": lambda p: np.sum(p[:n])},)
 
+    from scipy.optimize import minimize  # lazy: só no treino
     print(f"Treinando com {len(df):,} jogos e {n} selecoes...")
     resultado = minimize(
         _neg_log_verossimilhanca,
@@ -164,10 +170,19 @@ def treinar(df: pd.DataFrame) -> dict:
 # Previsão
 # ----------------------------------------------------------------------
 
-def matriz_placares(modelo, casa, fora, neutro=True, max_gols=10):
-    """Matriz (max_gols+1 x max_gols+1) com P(placar i x j)."""
-    from scipy.stats import poisson
+def _poisson_pmf(lam, max_gols=10):
+    """P(X=k) da Poisson para k=0..max_gols, em numpy puro (sem scipy).
 
+    P(X=k) = exp(-lam) * lam^k / k!. Como max_gols é pequeno (10), usamos
+    fatoriais exatos — resultado idêntico ao scipy, sem a dependência.
+    """
+    k = np.arange(max_gols + 1)
+    fact = np.array([math.factorial(int(x)) for x in k], dtype=float)
+    return np.exp(-lam) * np.power(float(lam), k) / fact
+
+
+def matriz_placares(modelo, casa, fora, neutro=True, max_gols=10):
+    """Matriz (max_gols+1 x max_gols+1) com P(placar i x j). Numpy puro."""
     a, d = modelo["ataque"], modelo["defesa"]
     mando = 0.0 if neutro else modelo["mando"]
     rho = modelo["rho"]
@@ -175,8 +190,8 @@ def matriz_placares(modelo, casa, fora, neutro=True, max_gols=10):
     lam_c = np.exp(a[casa] - d[fora] + mando)
     lam_f = np.exp(a[fora] - d[casa])
 
-    pc = poisson.pmf(np.arange(max_gols + 1), lam_c)
-    pf = poisson.pmf(np.arange(max_gols + 1), lam_f)
+    pc = _poisson_pmf(lam_c, max_gols)
+    pf = _poisson_pmf(lam_f, max_gols)
     m = np.outer(pc, pf)
 
     # correção de Dixon-Coles nos 4 cantos
