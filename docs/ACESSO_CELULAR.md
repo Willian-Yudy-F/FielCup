@@ -42,11 +42,15 @@ salvar o link nos favoritos do celular. Atualiza sozinho sempre que você der
    - **Repository:** `Willian-Yudy-F/FielCup`
    - **Branch:** `main`
    - **Main file path:** `app/dashboard.py`
+   - **App URL (endereço):** digite `fielcup` → o link fica
+     **`https://fielcup.streamlit.app`** (o mesmo do botão no README).
+     > Se `fielcup` já estiver em uso, escolha outro (ex.: `fielcup-yudy`) e
+     > depois troque o link no topo do `README.md` para o que você escolheu.
 
 4. Clique em **"Deploy"**. Espere 1–3 minutos (ele instala tudo sozinho a
    partir do `requirements.txt`).
 
-5. Pronto! Você recebe um link parecido com:
+5. Pronto! Seu link público fica:
    ```
    https://fielcup.streamlit.app
    ```

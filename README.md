@@ -1,16 +1,43 @@
-# FielCup — World Cup 2026 Forecast
+# FielCup — Quem vai ganhar a Copa de 2026? ⚽
 
-> A statistical model that predicts every World Cup 2026 fixture and
-> simulates the whole tournament 50,000 times to estimate each nation's
-> probability of winning the title. End-to-end data science pipeline:
-> collection, modeling, simulation, validation, automation and a dashboard.
+> Um modelo estatístico que prevê cada jogo da Copa 2026 e **simula o torneio
+> inteiro 50.000 vezes** para estimar a chance de título de cada seleção.
+> Pipeline completo de ciência de dados: coleta, SQL, modelo, simulação,
+> validação e um **dashboard interativo que abre no celular**.
+
+<p align="center">
+  <a href="https://fielcup.streamlit.app">
+    <img alt="Abrir o app ao vivo" src="https://img.shields.io/badge/▶%20ABRIR%20O%20APP%20AO%20VIVO-fielcup.streamlit.app-C0392B?style=for-the-badge&logo=streamlit&logoColor=white">
+  </a>
+</p>
+
+<p align="center">
+  <b><a href="https://fielcup.streamlit.app">👉 Clique aqui para entrar no FielCup</a></b><br>
+  <sub>Abre no celular e no computador · veja <a href="docs/ACESSO_CELULAR.md">como publicar o seu link grátis em 2 minutos</a></sub>
+</p>
 
 ![status](https://img.shields.io/badge/status-active-C0392B)
 ![python](https://img.shields.io/badge/python-3.11+-141414)
+![sql](https://img.shields.io/badge/SQL-SQLite-003B57)
+![streamlit](https://img.shields.io/badge/dashboard-Streamlit-C0392B)
 
-> 📱 **Ver no celular:** o dashboard é responsivo e pode ser publicado de
-> graça no Streamlit Community Cloud (link público que abre em qualquer
-> aparelho). Passo a passo em [`docs/ACESSO_CELULAR.md`](docs/ACESSO_CELULAR.md).
+### 📱 Como fica na tela
+
+<p align="center">
+  <img src="docs/img/dashboard_mobile.png" width="270" alt="FielCup no celular — resumo e ranking"/>
+  &nbsp;&nbsp;&nbsp;
+  <img src="docs/img/analise_jogo.png" width="430" alt="Análise estatística de cada jogo"/>
+</p>
+
+<p align="center">
+  <sub>À esquerda, a visão no celular (resumo + ranking de favoritos). À direita,
+  a análise estatística de um jogo: gols esperados (xG), probabilidades,
+  over/under, ambos marcam, e a conta passo a passo de cada número.</sub>
+</p>
+
+> ⚠️ O link acima fica ativo **depois** que você fizer o deploy (1x, ~2 min).
+> O passo a passo — incluindo como reservar o endereço `fielcup.streamlit.app` —
+> está em [`docs/ACESSO_CELULAR.md`](docs/ACESSO_CELULAR.md).
 
 ## What it answers
 
