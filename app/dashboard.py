@@ -6,19 +6,34 @@ Agora com:
   - grafico de probabilidade de titulo (Top 12);
   - motor de confrontos usando os ratings blendados.
 """
-from pathlib import Path
 import sys
+from pathlib import Path
+import streamlit as st
+
+# set_page_config TEM de ser o primeiro comando Streamlit.
+st.set_page_config(page_title="FielCup Forecast", page_icon="*", layout="centered")
+
+# "Sinal de vida": garante que SEMPRE aparece algo na tela, mesmo que os
+# imports/dados falhem (evita a temida página em branco e mostra o erro real).
+_boot = st.empty()
+_boot.info("⏳ Carregando o FielCup… a primeira carga pode levar alguns segundos.")
+
 import numpy as np
 import pandas as pd
-import streamlit as st
 
 RAIZ = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(RAIZ / "src"))
 
-from dixon_coles import probabilidades, matriz_placares, analisar_jogo
-from talento import ratings_blendados, indice_talento, detalhe_blend
-from simulate import simular
-import database as db
+try:
+    from dixon_coles import probabilidades, matriz_placares, analisar_jogo
+    from talento import ratings_blendados, indice_talento, detalhe_blend
+    from simulate import simular
+    import database as db
+except Exception as _imp_err:
+    _boot.empty()
+    st.error("⚠️ Erro ao importar os módulos do projeto (src/). Detalhes:")
+    st.exception(_imp_err)
+    st.stop()
 
 # Probabilidade implícita das odds das casas (junho/2026, com margem).
 # Coletado de agregadores de odds; usado só para comparar com o modelo.
@@ -276,7 +291,7 @@ def tr(pt, en):
 
 def main():
     global LANG
-    st.set_page_config(page_title="FielCup Forecast", page_icon="*", layout="centered")
+    _boot.empty()  # remove o "sinal de vida" — chegamos a renderizar de verdade
     st.markdown(CSS, unsafe_allow_html=True)
 
     # ---- seletor de idioma / language switch ----
