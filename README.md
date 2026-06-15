@@ -152,6 +152,13 @@ pip install -r requirements-dev.txt
 pytest -q
 ```
 
+Predict a matchup from the command line:
+
+```bash
+python src/predict_today.py Brazil France
+python src/predict_today.py Brazil Argentina --venue home --alpha 1.0
+```
+
 Rebuild the pipeline:
 
 ```bash
