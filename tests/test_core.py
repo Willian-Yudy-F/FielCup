@@ -1,5 +1,6 @@
 from pathlib import Path
 import sqlite3
+import subprocess
 import sys
 
 import numpy as np
@@ -103,3 +104,23 @@ def test_committed_forecast_matches_documented_top_six():
         top_six["prob_titulo"].to_numpy(),
         np.array([0.18502, 0.14844, 0.10200, 0.09836, 0.07576, 0.06434]),
     )
+
+
+def test_predict_today_cli_runs():
+    result = subprocess.run(
+        [
+            sys.executable,
+            str(ROOT / "src" / "predict_today.py"),
+            "Brazil",
+            "France",
+        ],
+        cwd=ROOT,
+        check=False,
+        capture_output=True,
+        text=True,
+    )
+
+    assert result.returncode == 0
+    assert "Brazil  vs  France" in result.stdout
+    assert "Most likely scoreline" in result.stdout
+    assert "PICK:" in result.stdout
