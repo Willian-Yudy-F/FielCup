@@ -8,89 +8,75 @@ qual é qual é exatamente o tipo de raciocínio que dá valor ao projeto.
 
 ## O placar: modelo vs. casas de aposta (junho/2026)
 
+Modelo padrão: resultados + talento, com `alpha=0.6`.
+
 | Posição | Modelo FielCup | Casas de aposta / mercados |
 |---------|----------------|----------------------------|
-| 1º | 🇦🇷 Argentina (22%) | 🇪🇸 Espanha (~16%) |
-| 2º | 🇪🇸 Espanha (14%) | 🇫🇷 França (~16%) |
-| 3º | 🏴 Inglaterra (7,6%) | 🏴 Inglaterra (~11%) |
-| 4º | 🇲🇦 Marrocos (5,7%) | 🇧🇷 Brasil (~10%) |
-| 5º | 🇧🇷 Brasil (5,6%) | 🇵🇹 Portugal (~9%) |
-| 6º | 🇵🇹 Portugal (5,2%) | 🇦🇷 Argentina (~9-11%) |
+| 1º | 🇦🇷 Argentina (18,5%) | 🇪🇸 Espanha (~18%) |
+| 2º | 🇪🇸 Espanha (14,8%) | 🇫🇷 França (~18%) |
+| 3º | 🏴 Inglaterra (10,2%) | 🏴 Inglaterra (~12%) |
+| 4º | 🇫🇷 França (9,8%) | 🇵🇹 Portugal (~11%) |
+| 5º | 🇧🇷 Brasil (7,6%) | 🇧🇷 Brasil (~10%) |
+| 6º | 🇵🇹 Portugal (6,4%) | 🇦🇷 Argentina (~9,5%) |
 
 As casas de aposta convergem num consenso claro: Espanha e França lideram
-empatadas no topo, seguidas de Inglaterra, com Argentina apenas em 5º/6º
-lugar. O modelo FielCup discorda em dois pontos grandes: **coloca Argentina
-disparada em 1º** e **deixa França fora do top 7**. Vale dissecar cada um.
+empatadas no topo, seguidas de Inglaterra. A versão atual do FielCup já não é
+um modelo "só resultados": ela mistura Dixon-Coles com ranking FIFA e valor de
+elenco. Isso aproxima o modelo do mercado, mas ainda preserva uma discordância
+importante: **a Argentina aparece como favorita clara**.
 
-## Divergência nº 1: por que o modelo ama a Argentina
+## Divergência nº 1: por que o modelo ainda ama a Argentina
 
-Esta é a discordância mais marcante. O mercado dá ~9-11% para a Argentina;
-o modelo dá 22%. Por quê?
+Esta é a discordância mais marcante. O mercado dá cerca de 9,5% para a
+Argentina; o modelo dá 18,5%. Por quê?
 
-O modelo é, na essência, uma máquina de medir **força de ataque e defesa a
-partir de resultados recentes**. E nos dados, a Argentina tem a **melhor
-defesa de todo o torneio** (o maior parâmetro defensivo estimado). Isso não
-é acidente: ela foi campeã mundial em 2022, venceu a Copa América, e nas
-Eliminatórias terminou em primeiro com um saldo enorme, incluindo uma
-goleada sobre o Brasil. Para um modelo que olha resultados, a Argentina é
-simplesmente o time que mais vence e menos sofre. Ela também tem um caminho
-de grupo fácil, o que infla a probabilidade de chegar inteira às fases
-decisivas.
+O FielCup mede força de ataque e defesa a partir de resultados recentes, com
+decaimento temporal. Nos dados, a Argentina tem uma defesa medida muito forte
+e um histórico recente excelente: foi campeã mundial em 2022, venceu a Copa
+América e teve uma campanha robusta nas Eliminatórias. Para um modelo que dá
+peso real ao que aconteceu em campo, isso é evidência forte.
 
-Os especialistas enxergam algo que o modelo **não consegue ver**: a idade.
-Messi terá 39 anos, e parte do elenco campeão de 2022 está envelhecendo.
-Os analistas descontam a Argentina justamente por isso — apostam que o
-desempenho passado não vai se sustentar fisicamente ao longo de sete jogos
-num calendário comprimido. Repare na assimetria: o modelo usa o passado
-recente como evidência; o especialista usa conhecimento contextual sobre o
-futuro (declínio físico) que não está em nenhum placar. **Nenhum dos dois
-está "errado"** — eles usam informações diferentes. Curiosamente, alguns
-analistas concordam com o modelo: há quem diga que a Argentina é a melhor
-aposta de valor justamente porque o mercado a está subestimando.
+Os especialistas enxergam algo que o modelo ainda não mede bem: idade, desgaste
+físico, ciclo de elenco e contexto tático. Messi terá 39 anos em 2026, e parte
+do elenco campeão envelheceu. O mercado parece descontar mais esse risco do
+que o FielCup.
 
-## Divergência nº 2: cadê a França?
+## Divergência nº 2: por que França e Espanha sobem com talento
 
-O mercado coloca a França entre as duas favoritas; o modelo a deixa em 8º.
-Aqui o modelo provavelmente está **errando**, e entender por quê é instrutivo.
+No modelo antigo, baseado só em resultados de seleção, a França ficava baixa
+demais. A versão atual corrige parte desse problema: ranking FIFA e valor de
+elenco entram como um prior de talento, então França e Espanha sobem para a
+mesma vizinhança do consenso de mercado.
 
-A força da França mora muito no **valor individual do elenco** — Mbappé e
-companhia — e em jogadores que brilham em clubes de elite. O modelo só vê
-resultados da *seleção*, e a França teve resultados irregulares em amistosos
-e jogos de menor peso nos últimos anos, o que derruba seus parâmetros. O
-modelo não sabe que Mbappé existe; ele só sabe que a seleção francesa nem
-sempre goleou. Esse é um **limite conhecido de modelos baseados só em
-resultados de seleção**: eles subavaliam times cujo talento individual
-supera o histórico coletivo recente.
+A força da França mora muito no valor individual do elenco — Mbappé e
+companhia — e em jogadores que brilham em clubes de elite. O modelo puro de
+resultados não sabe que Mbappé existe; ele só sabe que a seleção francesa nem
+sempre goleou. O blend com talento dá ao FielCup parte dessa informação externa
+sem abandonar o histórico de placares.
 
 ## O que o modelo acerta junto com os especialistas
 
-Nem tudo é divergência, e isso é importante: a **Inglaterra aparece em 3º
-nos dois**, a **Espanha está no topo dos dois** (o modelo concorda que o
-melhor ataque do torneio é espanhol), e times como **Portugal e Brasil**
-ficam na mesma vizinhança de probabilidade. O modelo também produz uma
-surpresa que ecoa a realidade: **Marrocos alto na lista** — e Marrocos foi
-de fato semifinalista em 2022, a melhor campanha africana da história. O
-modelo capturou que aquilo não foi puro acaso.
+Nem tudo é divergência, e isso é importante: a Inglaterra aparece em 3º nos
+dois, a Espanha está no topo dos dois, a França voltou ao top 4 depois do
+blend, e times como Portugal e Brasil ficam na mesma vizinhança de
+probabilidade. O modelo também ainda reconhece seleções fortes fora do grupo
+de favoritos óbvios, como Marrocos, que foi semifinalista em 2022.
 
-## A lição metodológica (o que escrever no portfólio)
+## A lição metodológica
 
-A comparação revela a natureza do modelo com honestidade:
+O modelo é forte onde resultados recentes refletem força real e ficou menos
+cego a talento depois de incorporar ranking FIFA e valor de elenco. Ele ainda
+não mede idade do elenco, lesões, motivação, esquema tático ou notícias de
+última hora.
 
-O modelo é **forte onde resultados recentes refletem força real** (Argentina,
-Espanha, Marrocos) e **fraco onde a força mora em fatores que ele não
-mede** — talento individual (França), idade do elenco (Argentina pelo lado
-oposto), lesões, motivação, esquema tático. Casas de aposta combinam modelos
-estatísticos *com* todo esse conhecimento contextual e com o dinheiro de
-milhares de apostadores, então divergir delas não é um defeito a esconder:
-é uma oportunidade de explicar **o que seu modelo vê e o que ele é cego**.
+Casas de aposta combinam modelos estatísticos com todo esse conhecimento
+contextual e com o dinheiro de milhares de apostadores. Divergir delas não é
+um defeito a esconder: é uma oportunidade de explicar **o que seu modelo vê e
+o que ele ainda não vê**.
 
-Num portfólio, essa análise vale mais que o número em si. Ela mostra que
-você entende as suposições do seu modelo, sabe diagnosticar onde ele falha,
-e consegue contextualizar resultados em vez de tratá-los como verdade
-absoluta. É a diferença entre "o modelo disse que a Argentina ganha" e "o
-modelo favorece a Argentina porque pesa resultados recentes, onde ela é
-dominante; o mercado discorda por causa da idade do elenco, um fator que o
-modelo não captura".
+Num portfólio, essa análise vale mais que o número em si. Ela mostra que você
+entende as suposições do seu modelo, sabe diagnosticar onde ele falha, e
+consegue contextualizar resultados em vez de tratá-los como verdade absoluta.
 
 ---
 

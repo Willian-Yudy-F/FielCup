@@ -401,9 +401,10 @@ def main():
    Com **α=1** vale só o que aconteceu em campo (Argentina dispara); diminuindo
    α, o talento entra e **França, Espanha e Inglaterra sobem**.
 
-4. **Jogar a Copa 50 mil vezes.** Com a força final, sorteamos o placar de cada
-   jogo milhares de vezes (grupos + mata-mata). A **probabilidade de título** é
-   *em quantas dessas Copas o time foi campeão*.
+4. **Jogar a Copa milhares de vezes.** No dashboard, a Copa é simulada 8 mil
+   vezes para manter a interação rápida. No pipeline offline, o mesmo motor pode
+   rodar 50 mil simulações. A **probabilidade de título** é *em quantas dessas
+   Copas o time foi campeão*.
 
 > Para comparar réguas diferentes (gols, pontos FIFA, euros), tudo vira
 > **z-score**: quantos desvios-padrão acima (+) ou abaixo (−) da média.
@@ -424,9 +425,10 @@ def main():
    At **α=1** only on-pitch results count (Argentina runs away); lowering α
    brings talent in and **France, Spain and England rise**.
 
-4. **Playing the World Cup 50,000 times.** With each team's final strength, we
-   sample every match's score thousands of times (groups + knockout). The
-   **title probability** is *in how many of those Cups the team won it*.
+4. **Playing the World Cup thousands of times.** In the dashboard, the World Cup
+   is simulated 8,000 times to keep the interaction fast. In the offline
+   pipeline, the same engine can run 50,000 simulations. The **title
+   probability** is *in how many of those Cups the team won it*.
 
 > To compare different scales (goals, FIFA points, euros), everything becomes a
 > **z-score**: how many standard deviations above (+) or below (−) the mean.
@@ -713,10 +715,10 @@ f'''**In words:** at α={alpha:.1f}, {nm(escolha)} has results strength
     cred = tr(
         "Modelo · Dixon-Coles + blend de talento (α)<br>"
         "Método · Monte Carlo · dados em SQLite<br>"
-        "Validado · Brier +5.2% vs baseline · bracket simplificado",
+        "Validação · backtest Copa 2022 · bracket simplificado",
         "Model · Dixon-Coles + talent blend (α)<br>"
         "Method · Monte Carlo · data in SQLite<br>"
-        "Validated · Brier +5.2% vs baseline · simplified bracket")
+        "Validation · 2022 World Cup backtest · simplified bracket")
     st.markdown(f"""
     <div class="nota">{nota_final}</div>
     <div class="rodape">
