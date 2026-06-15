@@ -70,7 +70,9 @@ weight to FIFA ranking and squad value.
 3. **Talent prior.** FIFA ranking points and squad value are normalized and
    blended with the results model to reduce obvious blind spots.
 4. **Tournament simulation.** The 2026 group stage and knockout rounds are
-   simulated with vectorized NumPy Monte Carlo runs.
+   simulated with vectorized NumPy Monte Carlo runs. The committed forecast
+   uses 50,000 simulations; the dashboard uses 8,000 by default so the alpha
+   slider stays interactive.
 5. **Validation.** The model is backtested on the 2022 World Cup using only
    pre-tournament data.
 6. **Dashboard.** Streamlit exposes the forecast, alpha slider, match analysis
@@ -112,6 +114,10 @@ fielcup/
 |   |-- DATA_SOURCE.md
 |   |-- ACESSO_CELULAR.md
 |   `-- PLANO_EXPANSAO.md
+|-- tests/
+|   `-- test_core.py              # pytest checks for model invariants
+|-- .github/workflows/
+|   `-- ci.yml                    # GitHub Actions smoke test + pytest
 |-- scripts/
 |   `-- smoke_test.py             # quick project health check
 |-- src/
@@ -137,6 +143,13 @@ Run a quick health check:
 
 ```bash
 python scripts/smoke_test.py
+```
+
+Run the test suite:
+
+```bash
+pip install -r requirements-dev.txt
+pytest -q
 ```
 
 Rebuild the pipeline:
