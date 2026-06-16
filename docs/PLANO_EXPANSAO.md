@@ -4,6 +4,11 @@
 > sistema que se atualiza sozinho durante a Copa e enxerga o que hoje é
 > cego: a força real dos elencos.
 
+> **Status atual:** o dashboard principal é local-first. Os resultados são
+> digitados manualmente no Streamlit e usados para recalcular a previsão. A
+> integração com API-Football abaixo é uma expansão opcional futura, não uma
+> dependência do uso diário.
+
 ---
 
 ## 1. Por que expandir (o diagnóstico)
@@ -90,7 +95,7 @@ Todas têm opção gratuita.
 
 ---
 
-## 4. O coletor automático (já implementado)
+## 4. O coletor automático (opcional/futuro)
 
 O arquivo `src/api_collector.py` já faz a parte essencial:
 - `--update-results`: baixa os jogos finalizados da Copa e os incorpora ao
@@ -184,11 +189,12 @@ atualiza, então o site fica sempre com os números mais recentes, sozinho.
 
 ## 6. Roadmap sugerido (ordem de implementação)
 
-1. **Agora:** ligar o `api_collector.py` com sua chave e testar o
-   `--update-results`. (Pré-Copa, ele não traz nada, mas valida a conexão.)
-2. **Quando a Copa começar:** automatizar com GitHub Actions (Opção B).
-3. **v2 do modelo:** adicionar valor de elenco (Transfermarkt) e ranking
-   FIFA como features. É o que vai corrigir a cegueira de não ver os elencos.
+1. **Agora:** usar o dashboard local, registrar resultados manualmente e
+   gerar relatórios HTML mobile para jogos do dia ou partidas específicas.
+2. **Depois:** se o fluxo manual ficar trabalhoso, testar o `api_collector.py`
+   como apoio opcional.
+3. **Automação:** se a API estiver confiável, automatizar com GitHub Actions
+   (Opção B).
 4. **v3 (avançado):** migrar de "placar" para "xG" como variável-alvo,
    usando as estatísticas coletadas. Modelo mais sofisticado.
 5. **Opcional:** clima via Open-Meteo, mais como vitrine de completude do

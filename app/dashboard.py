@@ -1,17 +1,20 @@
 """FielCup - Dashboard (Swiss poster edition, mono palette).
 
 Agora com:
-  - botao ALPHA (resultado <-> talento) que re-ranqueia a Copa ao vivo;
+  - botao ALPHA (resultado <-> talento) que re-ranqueia a Copa localmente;
   - painel MODELO vs MERCADO (casas de aposta, junho/2026);
+  - painel de jogos do dia com previsao vs resultado real;
+  - exportacao HTML leve para enviar e abrir no celular;
   - grafico de probabilidade de titulo (Top 12);
   - motor de confrontos usando os ratings blendados.
 """
 import sys
 from pathlib import Path
+import html as html_lib
 import streamlit as st
 
 # set_page_config TEM de ser o primeiro comando Streamlit.
-st.set_page_config(page_title="FielCup Forecast", page_icon="*", layout="centered")
+st.set_page_config(page_title="FielCup Local Forecast", page_icon="*", layout="centered")
 
 # "Sinal de vida": garante que SEMPRE aparece algo na tela, mesmo que os
 # imports/dados falhem (evita a temida página em branco e mostra o erro real).
@@ -80,12 +83,14 @@ def tag(t): return TEAM.get(t, (t, "--", ""))[2]
 def carregar_estaticos():
     grupos = db.tabela("groups")
     talento = indice_talento().set_index("selecao")
-    fixtures = db.tabela("fixtures_2026")[["home_team", "away_team"]]
+    fixtures = db.tabela("fixtures_2026")[["date", "home_team", "away_team", "neutral"]]
+    fixtures = fixtures.copy()
+    fixtures["date"] = pd.to_datetime(fixtures["date"]).dt.strftime("%Y-%m-%d")
     return grupos, talento, fixtures
 
 
-def ler_resultados_live() -> dict:
-    """Lê os placares reais já digitados (tabela live_results)."""
+def ler_resultados_locais() -> dict:
+    """Lê os placares reais digitados localmente no SQLite."""
     try:
         df = db.tabela("live_results")
     except Exception:
@@ -97,7 +102,7 @@ def ler_resultados_live() -> dict:
     return out
 
 
-def salvar_resultados_live(df: pd.DataFrame) -> None:
+def salvar_resultados_locais(df: pd.DataFrame) -> None:
     """Grava no banco só as linhas com os dois placares preenchidos."""
     val = df.dropna(subset=["Gols casa", "Gols fora"])
     out = pd.DataFrame({
@@ -110,8 +115,8 @@ def salvar_resultados_live(df: pd.DataFrame) -> None:
 
 
 def upsert_resultado(casa: str, fora: str, gc: int, gf: int) -> None:
-    """Insere/atualiza o placar de UM jogo na tabela live_results."""
-    atuais = ler_resultados_live()
+    """Insere/atualiza o placar de UM jogo na tabela local de resultados."""
+    atuais = ler_resultados_locais()
     atuais[(casa, fora)] = (int(gc), int(gf))
     out = pd.DataFrame(
         [{"home_team": h, "away_team": a, "home_score": s[0], "away_score": s[1]}
@@ -119,42 +124,26 @@ def upsert_resultado(casa: str, fora: str, gc: int, gf: int) -> None:
     db.salvar_df(out, "live_results")
 
 
-def buscar_resultados_api(fixtures: pd.DataFrame):
-    """(Opcional) Busca resultados finalizados da Copa na API-Football e
-    grava os que casam com jogos de grupo em live_results.
+def resultado_real(resultados: dict, casa: str, fora: str):
+    """Retorna placar registrado localmente para um jogo, se existir."""
+    return resultados.get((casa, fora))
 
-    É totalmente defensivo: se faltar chave, biblioteca ou rede, devolve
-    uma mensagem amigável em vez de quebrar o dashboard.
 
-    Retorna (qtde_gravada, mensagem).
-    """
-    import os
-    if not os.environ.get("API_FOOTBALL_KEY"):
-        return 0, ("Defina a chave antes de abrir o dashboard:\n"
-                   "`export API_FOOTBALL_KEY='sua_chave'` "
-                   "(gratuita em dashboard.api-football.com).")
-    try:
-        from api_collector import baixar_resultados_copa
-        jogos = baixar_resultados_copa()
-    except ModuleNotFoundError:
-        return 0, "Falta a biblioteca `requests`. Rode: `pip install requests`."
-    except Exception as e:
-        return 0, f"Não consegui consultar a API: {e}"
+def outcome(gc: int, gf: int, casa: str, fora: str) -> str:
+    if gc > gf:
+        return casa
+    if gf > gc:
+        return fora
+    return "Draw"
 
-    if jogos is None or jogos.empty:
-        return 0, "A API não retornou jogos finalizados ainda."
 
-    fx_pares = set(zip(fixtures["home_team"], fixtures["away_team"]))
-    gravados = 0
-    for _, r in jogos.iterrows():
-        h, a = r["home_team"], r["away_team"]
-        if (h, a) in fx_pares:
-            upsert_resultado(h, a, r["home_score"], r["away_score"]); gravados += 1
-        elif (a, h) in fx_pares:
-            upsert_resultado(a, h, r["away_score"], r["home_score"]); gravados += 1
-    nota = "" if gravados else (" Nenhum bateu com os nomes do dataset — "
-                                "os nomes da API podem diferir; use o registro manual.")
-    return gravados, f"{gravados} resultado(s) importado(s) da API.{nota}"
+def pick_do_modelo(an: dict, casa: str, fora: str) -> tuple[str, float]:
+    opcoes = [(casa, an["p_casa"]), ("Draw", an["p_empate"]), (fora, an["p_fora"])]
+    return max(opcoes, key=lambda item: item[1])
+
+
+def pct(x: float) -> str:
+    return f"{x * 100:.1f}%"
 
 
 @st.cache_data(show_spinner="Simulando a Copa...")
@@ -281,6 +270,105 @@ def painel_modelo_vs_mercado(probs):
     return linhas
 
 
+def analise_fixture(modelo: dict, resultados: dict, jogo: pd.Series) -> dict:
+    casa, fora = jogo["home_team"], jogo["away_team"]
+    neutro = bool(int(jogo.get("neutral", 1)))
+    an = analisar_jogo(modelo, casa, fora, neutro=neutro)
+    pick, pick_p = pick_do_modelo(an, casa, fora)
+    i, j = an["placar_provavel"]
+    real = resultado_real(resultados, casa, fora)
+    real_txt = "Pendente"
+    status_txt = "Aguardando resultado"
+    if real is not None:
+        gc, gf = real
+        real_txt = f"{nm(casa)} {gc} x {gf} {nm(fora)}"
+        status_txt = "Modelo acertou o desfecho" if outcome(gc, gf, casa, fora) == pick else "Modelo errou o desfecho"
+    return {
+        "date": str(jogo["date"])[:10],
+        "home_team": casa,
+        "away_team": fora,
+        "p_home": an["p_casa"],
+        "p_draw": an["p_empate"],
+        "p_away": an["p_fora"],
+        "xg_home": an["xg_casa"],
+        "xg_away": an["xg_fora"],
+        "scoreline": f"{nm(casa)} {i} x {j} {nm(fora)}",
+        "pick": pick,
+        "pick_probability": pick_p,
+        "actual": real_txt,
+        "status": status_txt,
+    }
+
+
+def mobile_report_html(jogos: pd.DataFrame, modelo: dict, resultados: dict,
+                       titulo: str, alpha: float) -> str:
+    cards = []
+    for _, jogo in jogos.iterrows():
+        info = analise_fixture(modelo, resultados, jogo)
+        home = html_lib.escape(nm(info["home_team"]))
+        away = html_lib.escape(nm(info["away_team"]))
+        pick = html_lib.escape(nm(info["pick"]) if info["pick"] != "Draw" else "Empate")
+        status_class = "done" if info["actual"] != "Pendente" else "pending"
+        cards.append(f"""
+        <article class="match">
+          <div class="date">{html_lib.escape(info['date'])}</div>
+          <h2>{home} <span>vs</span> {away}</h2>
+          <div class="score">{html_lib.escape(info['scoreline'])}</div>
+          <div class="grid">
+            <div><b>{home}</b><strong>{pct(info['p_home'])}</strong></div>
+            <div><b>Empate</b><strong>{pct(info['p_draw'])}</strong></div>
+            <div><b>{away}</b><strong>{pct(info['p_away'])}</strong></div>
+          </div>
+          <p><b>Pick do modelo:</b> {pick} ({pct(info['pick_probability'])})</p>
+          <p><b>xG:</b> {home} {info['xg_home']:.2f} x {info['xg_away']:.2f} {away}</p>
+          <p><b>Resultado final:</b> {html_lib.escape(info['actual'])}</p>
+          <div class="status {status_class}">{html_lib.escape(info['status'])}</div>
+        </article>
+        """)
+
+    return f"""<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{html_lib.escape(titulo)} - FielCup</title>
+  <style>
+    :root {{ --paper:#f4f1e8; --ink:#161616; --red:#c0392b; --muted:#777164; }}
+    * {{ box-sizing:border-box; }}
+    body {{ margin:0; background:#d8d4c8; color:var(--ink);
+      font-family:Arial, Helvetica, sans-serif; }}
+    header {{ background:#161616; color:#f4f1e8; padding:24px 18px 20px; }}
+    header h1 {{ margin:0; font-size:34px; line-height:.95; letter-spacing:-1px; }}
+    header p {{ margin:8px 0 0; color:#c9c3b4; font-size:13px; text-transform:uppercase; }}
+    main {{ max-width:720px; margin:0 auto; padding:14px; }}
+    .match {{ background:var(--paper); border:1px solid #b8b4a6; border-left:5px solid var(--red);
+      margin:0 0 14px; padding:16px; }}
+    .date {{ color:var(--muted); font-size:12px; text-transform:uppercase; letter-spacing:1px; }}
+    h2 {{ margin:6px 0 10px; font-size:22px; line-height:1.05; }}
+    h2 span {{ color:var(--muted); font-size:14px; }}
+    .score {{ font-size:18px; font-weight:800; margin:8px 0 12px; }}
+    .grid {{ display:grid; grid-template-columns:1fr 1fr 1fr; gap:8px; margin:12px 0; }}
+    .grid div {{ background:#1e1e1e; color:#f4f1e8; padding:10px 8px; text-align:center; }}
+    .grid b {{ display:block; font-size:11px; color:#c9c3b4; font-weight:400; }}
+    .grid strong {{ display:block; font-size:20px; margin-top:4px; }}
+    p {{ margin:8px 0; font-size:14px; }}
+    .status {{ margin-top:12px; padding:9px 10px; font-weight:700; font-size:13px; }}
+    .status.pending {{ background:#e6dfcf; }}
+    .status.done {{ background:#161616; color:#f4f1e8; }}
+  </style>
+</head>
+<body>
+  <header>
+    <h1>Fiel<span style="color:var(--red)">Cup</span></h1>
+    <p>{html_lib.escape(titulo)} · alpha={alpha:.1f} · relatorio local</p>
+  </header>
+  <main>
+    {''.join(cards)}
+  </main>
+</body>
+</html>"""
+
+
 LANG = "PT"
 
 
@@ -302,7 +390,7 @@ def main():
     LANG = "PT" if "PT" in idioma else "EN"
 
     grupos, talento, fixtures = carregar_estaticos()
-    live = ler_resultados_live()
+    live = ler_resultados_locais()
     res_key = tuple(sorted((h, a, gh, ga) for (h, a), (gh, ga) in live.items()))
 
     # ---- controle: botao alpha ----
@@ -315,8 +403,8 @@ def main():
     )
     if live:
         st.caption(tr(
-            f"📅 Análise condicionada a {len(live)} resultado(s) real(is) da Copa já registrado(s).",
-            f"📅 Forecast conditioned on {len(live)} real World Cup result(s) already entered."))
+            f"📅 Análise condicionada a {len(live)} resultado(s) local(is) já registrado(s).",
+            f"📅 Forecast conditioned on {len(live)} local result(s) already entered."))
 
     probs = simular_cache(alpha, res_key)
     modelo = modelo_cache(alpha)
@@ -379,7 +467,85 @@ def main():
     chart = top12.set_index("seleção")["prob_titulo"] * 100
     st.bar_chart(chart, color="#C0392B", height=280)
 
-    # ---- COMO O MODELO PENSA (explicação + cálculo ao vivo) ----
+    # ---- etapas da copa ----
+    st.markdown(f'<div class="mini-label">{tr("Etapas da Copa · caminho até o título", "World Cup stages · path to the title")}</div>',
+                unsafe_allow_html=True)
+    fases = probs.head(16)[
+        ["selecao", "prob_grupo", "prob_r16", "prob_quartas",
+         "prob_semi", "prob_final", "prob_titulo"]
+    ].copy()
+    fases["selecao"] = fases["selecao"].map(nm)
+    fases.columns = tr(
+        ["Seleção", "Sai dos grupos", "Oitavas", "Quartas", "Semi", "Final", "Título"],
+        ["Team", "From groups", "Round of 16", "Quarters", "Semi", "Final", "Title"],
+    )
+    for col in fases.columns[1:]:
+        fases[col] = (fases[col] * 100).map(lambda x: f"{x:.1f}%")
+    st.dataframe(fases, hide_index=True, width="stretch")
+
+    # ---- jogos do dia: modelo vs resultado real ----
+    st.markdown(f'<div class="mini-label">{tr("Jogos do dia · previsão x resultado", "Daily matches · forecast vs result")}</div>',
+                unsafe_allow_html=True)
+    datas = sorted(fixtures["date"].unique())
+    hoje = pd.Timestamp.today().strftime("%Y-%m-%d")
+    idx_data = datas.index(hoje) if hoje in datas else 0
+    data_sel = st.selectbox(tr("Data", "Date"), datas, index=idx_data)
+    jogos_dia = fixtures[fixtures["date"] == data_sel].reset_index(drop=True)
+    linhas_dia = []
+    for _, jogo in jogos_dia.iterrows():
+        info = analise_fixture(modelo, live, jogo)
+        pick_nome = nm(info["pick"]) if info["pick"] != "Draw" else tr("Empate", "Draw")
+        linhas_dia.append({
+            tr("Jogo", "Match"): f"{nm(info['home_team'])} x {nm(info['away_team'])}",
+            tr("Pick modelo", "Model pick"): f"{pick_nome} ({pct(info['pick_probability'])})",
+            tr("Placar provável", "Likely score"): info["scoreline"],
+            tr("1", "1"): pct(info["p_home"]),
+            tr("X", "X"): pct(info["p_draw"]),
+            tr("2", "2"): pct(info["p_away"]),
+            tr("Resultado final", "Final result"): info["actual"],
+            tr("Status", "Status"): info["status"],
+        })
+    st.dataframe(pd.DataFrame(linhas_dia), hide_index=True, width="stretch")
+
+    # ---- relatório mobile ----
+    st.markdown(f'<div class="mini-label">{tr("Relatório mobile · baixar HTML", "Mobile report · download HTML")}</div>',
+                unsafe_allow_html=True)
+    st.caption(tr(
+        "Gere um arquivo HTML leve para abrir no celular ou enviar por mensagem. "
+        "Ele usa os resultados locais que você já digitou.",
+        "Generate a light HTML file to open on a phone or send by message. "
+        "It uses the local results you already entered."))
+    tipo_rel = st.radio(
+        tr("Escopo do relatório", "Report scope"),
+        [tr("Jogos do dia", "Daily matches"), tr("Um jogo", "Single match")],
+        horizontal=True,
+    )
+    if tipo_rel == tr("Jogos do dia", "Daily matches"):
+        jogos_rel = jogos_dia
+        nome_rel = f"fielcup_{data_sel}.html"
+        titulo_rel = f"Jogos de {data_sel}"
+    else:
+        labels_jogos = [
+            f"{r['date']} · {nm(r['home_team'])} x {nm(r['away_team'])}"
+            for _, r in fixtures.iterrows()
+        ]
+        escolha_rel = st.selectbox(tr("Jogo para exportar", "Match to export"), labels_jogos)
+        jogo_idx = labels_jogos.index(escolha_rel)
+        jogos_rel = fixtures.iloc[[jogo_idx]]
+        row_rel = jogos_rel.iloc[0]
+        nome_rel = f"fielcup_{row_rel['date']}_{row_rel['home_team']}_vs_{row_rel['away_team']}.html"
+        nome_rel = nome_rel.replace(" ", "_").replace("/", "-")
+        titulo_rel = f"{nm(row_rel['home_team'])} x {nm(row_rel['away_team'])}"
+    html_rel = mobile_report_html(jogos_rel, modelo, live, titulo_rel, alpha)
+    st.download_button(
+        tr("Baixar relatório HTML", "Download HTML report"),
+        html_rel,
+        file_name=nome_rel,
+        mime="text/html",
+        width="stretch",
+    )
+
+    # ---- COMO O MODELO PENSA (explicação + cálculo local) ----
     st.markdown(f'<div class="mini-label">{tr("Como o modelo chega nesses números", "How the model gets these numbers")}</div>',
                 unsafe_allow_html=True)
     with st.expander(tr("Entenda o raciocínio em 4 passos (linguagem simples)",
@@ -551,7 +717,7 @@ f'''**In words:** at α={alpha:.1f}, {nm(escolha)} has results strength
         with cc2:
             st.caption(tr("Distribuição do total de gols", "Total goals distribution"))
             dist = an["dist_total_gols"]
-            serie = pd.Series({k: v * 100 for k, v in dist.items()})
+            serie = pd.Series({str(k): v * 100 for k, v in dist.items()})
             st.bar_chart(serie, color="#1E1E1E", height=200)
 
         # leitura automática (narrativa)
@@ -625,52 +791,38 @@ f'''**In words:** at α={alpha:.1f}, {nm(escolha)} has results strength
                      ["Team", "Advance", "Quarters", "Title"])
     for c in tab.columns[1:]:
         tab[c] = (tab[c] * 100).map(lambda x: f"{x:.1f}%")
-    st.dataframe(tab, hide_index=True, use_container_width=True)
+    st.dataframe(tab, hide_index=True, width="stretch")
 
     # ---- ATUALIZAR DURANTE A COPA ----
-    st.markdown(f'<div class="mini-label">{tr("Durante a Copa · digite os resultados reais", "During the World Cup · enter the real results")}</div>',
+    st.markdown(f'<div class="mini-label">{tr("Resultados locais · atualize conforme os jogos terminam", "Local results · update as matches finish")}</div>',
                 unsafe_allow_html=True)
     st.caption(tr(
-        "À medida que os jogos da fase de grupos acontecem, preencha o placar. "
-        "A previsão deixa de *sortear* aquele jogo e passa a tratá-lo como fato — "
-        "todo o ranking acima se recalcula condicionado ao que já rolou. "
-        "Dica: dá para registrar um jogo por vez, com análise, na seção *Análise de Jogo* acima.",
-        "As group-stage games are played, fill in the score. The forecast stops "
-        "*simulating* that match and treats it as a fact — the whole ranking above "
-        "recomputes conditioned on what already happened. "
-        "Tip: you can enter one match at a time, with analysis, in *Match Analysis* above."))
-
-    with st.expander(tr("⚡ Opcional: importar resultados automaticamente (API-Football)",
-                        "⚡ Optional: import results automatically (API-Football)")):
-        st.caption(tr(
-            "Precisa de uma chave gratuita em dashboard.api-football.com, exportada "
-            "antes de abrir o dashboard (`export API_FOOTBALL_KEY=...`).",
-            "Needs a free key from dashboard.api-football.com, exported before "
-            "launching the dashboard (`export API_FOOTBALL_KEY=...`)."))
-        if st.button(tr("Buscar resultados finalizados da Copa", "Fetch finished World Cup results")):
-            n, msg = buscar_resultados_api(fixtures)
-            (st.success if n else st.info)(msg)
-            if n:
-                st.cache_data.clear()
-                st.rerun()
+        "Use este painel localmente no seu computador. Quando receber um placar, "
+        "preencha os gols e salve. A previsão deixa de sortear aquele jogo e passa "
+        "a tratá-lo como fato; todo o ranking recalcula condicionado aos resultados "
+        "já digitados.",
+        "Use this panel locally on your computer. When you receive a score, enter "
+        "the goals and save. The forecast stops simulating that match and treats it "
+        "as a fact; the whole ranking recomputes conditioned on entered results."))
 
     grp_de = dict(zip(grupos["selecao"], grupos["grupo"]))
-    editor_df = fixtures.copy()
+    editor_df = fixtures[["date", "home_team", "away_team"]].copy()
     editor_df["Grupo"] = editor_df["home_team"].map(grp_de)
-    editor_df = editor_df.rename(columns={"home_team": "Casa", "away_team": "Fora"})
+    editor_df = editor_df.rename(columns={"date": "Data", "home_team": "Casa", "away_team": "Fora"})
     editor_df["Gols casa"] = [live.get((c, f), (None, None))[0]
                               for c, f in zip(editor_df["Casa"], editor_df["Fora"])]
     editor_df["Gols fora"] = [live.get((c, f), (None, None))[1]
                               for c, f in zip(editor_df["Casa"], editor_df["Fora"])]
-    editor_df = editor_df[["Grupo", "Casa", "Fora", "Gols casa", "Gols fora"]] \
-        .sort_values(["Grupo", "Casa"]).reset_index(drop=True)
+    editor_df = editor_df[["Data", "Grupo", "Casa", "Fora", "Gols casa", "Gols fora"]] \
+        .sort_values(["Data", "Grupo", "Casa"]).reset_index(drop=True)
 
     edit = st.data_editor(
         editor_df,
         hide_index=True,
-        use_container_width=True,
+        width="stretch",
         height=320,
         column_config={
+            "Data": st.column_config.TextColumn(tr("Data", "Date"), disabled=True, width="small"),
             "Grupo": st.column_config.TextColumn(tr("Grupo", "Group"), disabled=True, width="small"),
             "Casa": st.column_config.TextColumn(tr("Casa", "Home"), disabled=True),
             "Fora": st.column_config.TextColumn(tr("Fora", "Away"), disabled=True),
@@ -685,12 +837,12 @@ f'''**In words:** at α={alpha:.1f}, {nm(escolha)} has results strength
     cb1, cb2 = st.columns([1, 1])
     with cb1:
         if st.button(tr("💾 Salvar e recalcular", "💾 Save and recalculate"),
-                     use_container_width=True, type="primary"):
-            salvar_resultados_live(edit)
+                     width="stretch", type="primary"):
+            salvar_resultados_locais(edit)
             st.cache_data.clear()
             st.rerun()
     with cb2:
-        if st.button(tr("↺ Limpar resultados", "↺ Clear results"), use_container_width=True):
+        if st.button(tr("↺ Limpar resultados", "↺ Clear results"), width="stretch"):
             db.salvar_df(pd.DataFrame(
                 columns=["home_team", "away_team", "home_score", "away_score"]),
                 "live_results")
