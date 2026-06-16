@@ -9,7 +9,11 @@ builds a SQLite analytics layer, estimates team strength, simulates the
 tournament thousands of times and presents the result in a bilingual Streamlit
 dashboard.
 
-[Open the live app](https://fielcup.streamlit.app)
+Run locally:
+
+```bash
+streamlit run app/dashboard.py
+```
 
 ![status](https://img.shields.io/badge/status-active-C0392B)
 ![python](https://img.shields.io/badge/python-3.11+-141414)
@@ -75,8 +79,8 @@ weight to FIFA ranking and squad value.
    slider stays interactive.
 5. **Validation.** The model is backtested on the 2022 World Cup using only
    pre-tournament data.
-6. **Dashboard.** Streamlit exposes the forecast, alpha slider, match analysis
-   and live score updates.
+6. **Dashboard.** Streamlit exposes the forecast, alpha slider, match analysis,
+   local score updates and mobile HTML reports.
 
 ## Data Source
 
@@ -127,7 +131,8 @@ fielcup/
 |   |-- talento.py                # results + talent blend
 |   |-- simulate.py               # Monte Carlo tournament simulation
 |   |-- evaluate.py               # backtesting
-|   `-- api_collector.py          # optional live result updates
+|   |-- predict_today.py          # command-line match predictor
+|   `-- api_collector.py          # optional API collector, not required locally
 `-- requirements.txt
 ```
 
@@ -176,16 +181,21 @@ Launch the dashboard:
 streamlit run app/dashboard.py
 ```
 
-## Optional Live Updates
+## Local Matchday Workflow
 
-The dashboard can import completed matches from API-Football during the
-tournament. This is optional; manual score entry also works.
+The dashboard is designed to run locally on your computer. It does not depend
+on a live API feed. As matches finish, enter the scores in the local results
+table and click **Save and recalculate**. The forecast then treats those games
+as facts and recomputes the tournament probabilities.
+
+The dashboard also includes a mobile HTML export. You can generate a small
+report for all matches on a selected date or for one specific match, download
+the `.html` file and send it to a phone.
 
 ```bash
-cp .env.example .env
-export API_FOOTBALL_KEY="your_key"
-python src/api_collector.py --update-results
-python src/features.py && python src/dixon_coles.py && python src/simulate.py
+streamlit run app/dashboard.py
+# enter match scores in the dashboard
+# download the mobile HTML report from the "Mobile report" section
 ```
 
 ## Documentation
@@ -206,7 +216,8 @@ python src/features.py && python src/dixon_coles.py && python src/simulate.py
 ## Tech Stack
 
 Python, pandas, NumPy, SciPy, SQLite, SQL, Streamlit, Dixon-Coles modelling,
-Monte Carlo simulation, API-Football and football analytics.
+Monte Carlo simulation and football analytics. API-Football support remains as
+an optional collector script, but the main dashboard is local-first.
 
 ## License
 

@@ -116,24 +116,23 @@ documento `ANALISE_modelo_vs_especialistas.md` detalha isso.
 
 ## Como atualizar com os jogos que vão acontecer
 
-Durante a Copa, novos resultados saem todo dia. O projeto tem um coletor
-automático (`src/api_collector.py`) que puxa os jogos finalizados de uma API
-(API-Football) e os incorpora aos dados. O fluxo:
+Durante a Copa, novos resultados saem todo dia. O fluxo principal agora é
+local e manual: você roda o dashboard no seu computador, digita os placares
+que recebeu e salva. A previsão deixa de sortear esses jogos e passa a
+tratá-los como fatos, recalculando o ranking condicionado aos resultados já
+registrados.
 
-1. Pegue uma chave gratuita em https://dashboard.api-football.com
-2. No terminal:
+1. No terminal:
    ```
-   export API_FOOTBALL_KEY="sua_chave"
-   python src/api_collector.py --update-results
-   python src/features.py
-   python src/dixon_coles.py
-   python src/simulate.py
+   streamlit run app/dashboard.py
    ```
-   Isso baixa os jogos novos e recalcula tudo com os dados atualizados.
+2. Abra a seção **Resultados locais**.
+3. Preencha os gols dos jogos concluídos.
+4. Clique em **Salvar e recalcular**.
+5. Gere o relatório HTML mobile para os jogos do dia ou para uma partida.
 
-Para não fazer isso na mão a cada jogo, dá para automatizar com GitHub
-Actions (roda sozinho na nuvem, todo dia). O passo a passo está em
-`PLANO_EXPANSAO.md`.
+O arquivo `src/api_collector.py` fica como experimento opcional para uma
+automação futura, mas o dashboard principal não depende dele.
 
 ---
 
@@ -143,7 +142,8 @@ Actions (roda sozinho na nuvem, todo dia). O passo a passo está em
 - Tem validação científica honesta (backtesting).
 - Tem comunicação visual (dashboard).
 - Tem pensamento crítico (a análise de por que diverge dos especialistas).
-- Tem visão de engenharia (coletor automático e plano de automação).
+- Tem visão de engenharia (dashboard local, atualização manual controlada,
+  testes e CI).
 
 São exatamente as competências que separam um projeto de estudante de um
 projeto profissional.
