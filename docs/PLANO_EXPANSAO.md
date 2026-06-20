@@ -169,7 +169,7 @@ jobs:
           python src/dixon_coles.py
           python src/simulate.py
         env:
-          API_FOOTBALL_KEY: ${{ secrets.API_FOOTBALL_KEY }}
+          API_FOOTBALL_KEY: <GITHUB_ACTIONS_SECRET_API_FOOTBALL_KEY>
       - run: |
           git config user.name "fielcup-bot"
           git config user.email "bot@fielcup"
