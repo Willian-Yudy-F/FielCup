@@ -9,16 +9,20 @@ builds a SQLite analytics layer, estimates team strength, simulates the
 tournament thousands of times and presents the result in a bilingual Streamlit
 dashboard.
 
-Run locally:
+Open the mobile report:
+
+```text
+https://willian-yudy-f.github.io/FielCup/
+```
+
+This static page shows the matches for the current day, includes a button for
+the next Brazil matchday and works directly on a phone without Streamlit.
+
+Run the full dashboard locally:
 
 ```bash
 streamlit run app/dashboard.py
 ```
-
-Or open the live app: <https://fielcup.streamlit.app>
-
-For mobile use, open the dashboard and use the **Brazil · next match** section
-to download a lightweight HTML report for the next Brazil matchday.
 
 ![status](https://img.shields.io/badge/status-active-C0392B)
 ![python](https://img.shields.io/badge/python-3.11+-141414)
