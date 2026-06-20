@@ -9,8 +9,10 @@ Agora com:
   - motor de confrontos usando os ratings blendados.
 """
 import sys
+from datetime import datetime
 from pathlib import Path
 import html as html_lib
+from zoneinfo import ZoneInfo
 import streamlit as st
 
 # set_page_config TEM de ser o primeiro comando Streamlit.
@@ -144,6 +146,23 @@ def pick_do_modelo(an: dict, casa: str, fora: str) -> tuple[str, float]:
 
 def pct(x: float) -> str:
     return f"{x * 100:.1f}%"
+
+
+def proximo_jogo_brasil(fixtures: pd.DataFrame, resultados: dict):
+    """Próximo jogo do Brasil ainda sem placar local registrado."""
+    hoje = datetime.now(ZoneInfo("Australia/Sydney")).strftime("%Y-%m-%d")
+    jogos = fixtures[
+        ((fixtures["home_team"] == "Brazil") | (fixtures["away_team"] == "Brazil"))
+        & (fixtures["date"] >= hoje)
+    ].sort_values("date")
+    for _, jogo in jogos.iterrows():
+        if resultado_real(resultados, jogo["home_team"], jogo["away_team"]) is None:
+            return jogo
+
+    jogos = fixtures[
+        (fixtures["home_team"] == "Brazil") | (fixtures["away_team"] == "Brazil")
+    ].sort_values("date")
+    return jogos.iloc[-1] if not jogos.empty else None
 
 
 @st.cache_data(show_spinner="Simulando a Copa...")
@@ -467,6 +486,39 @@ def main():
     chart = top12.set_index("seleção")["prob_titulo"] * 100
     st.bar_chart(chart, color="#C0392B", height=280)
 
+    # ---- próximo jogo do Brasil: atalho mobile ----
+    jogo_brasil = proximo_jogo_brasil(fixtures, live)
+    data_brasil = str(jogo_brasil["date"])[:10] if jogo_brasil is not None else None
+    if jogo_brasil is not None:
+        info_br = analise_fixture(modelo, live, jogo_brasil)
+        jogos_data_brasil = fixtures[fixtures["date"] == data_brasil].reset_index(drop=True)
+        html_brasil = mobile_report_html(
+            jogos_data_brasil,
+            modelo,
+            live,
+            f"Brasil em campo - {data_brasil}",
+            alpha,
+        )
+        pick_br = nm(info_br["pick"]) if info_br["pick"] != "Draw" else tr("Empate", "Draw")
+        st.markdown(f'<div class="mini-label">{tr("Brasil · próximo jogo", "Brazil · next match")}</div>',
+                    unsafe_allow_html=True)
+        st.markdown(f"""
+        <div class="resumo">
+          <h4>{tr("Relatório pronto para celular", "Mobile-ready report")}</h4>
+          <p><b>{nm(info_br["home_team"])} x {nm(info_br["away_team"])}</b> · {data_brasil}</p>
+          <p>{tr("Pick do modelo", "Model pick")}: <b>{pick_br}</b>
+          ({pct(info_br["pick_probability"])}). {tr("Placar provável", "Likely score")}:
+          <b>{info_br["scoreline"]}</b>.</p>
+        </div>
+        """, unsafe_allow_html=True)
+        st.download_button(
+            tr("Baixar relatório do próximo jogo do Brasil", "Download next Brazil match report"),
+            html_brasil,
+            file_name=f"fielcup_brasil_{data_brasil}.html",
+            mime="text/html",
+            width="stretch",
+        )
+
     # ---- etapas da copa ----
     st.markdown(f'<div class="mini-label">{tr("Etapas da Copa · caminho até o título", "World Cup stages · path to the title")}</div>',
                 unsafe_allow_html=True)
@@ -488,7 +540,8 @@ def main():
                 unsafe_allow_html=True)
     datas = sorted(fixtures["date"].unique())
     hoje = pd.Timestamp.today().strftime("%Y-%m-%d")
-    idx_data = datas.index(hoje) if hoje in datas else 0
+    data_padrao = data_brasil or hoje
+    idx_data = datas.index(data_padrao) if data_padrao in datas else 0
     data_sel = st.selectbox(tr("Data", "Date"), datas, index=idx_data)
     jogos_dia = fixtures[fixtures["date"] == data_sel].reset_index(drop=True)
     linhas_dia = []

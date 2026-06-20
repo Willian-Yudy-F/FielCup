@@ -15,6 +15,11 @@ Run locally:
 streamlit run app/dashboard.py
 ```
 
+Or open the live app: <https://fielcup.streamlit.app>
+
+For mobile use, open the dashboard and use the **Brazil · next match** section
+to download a lightweight HTML report for the next Brazil matchday.
+
 ![status](https://img.shields.io/badge/status-active-C0392B)
 ![python](https://img.shields.io/badge/python-3.11+-141414)
 ![sql](https://img.shields.io/badge/SQL-SQLite-003B57)
