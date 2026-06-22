@@ -88,14 +88,14 @@ def build_matches() -> list[dict[str, object]]:
 
         final = results.get((home, away))
         final_text = None
-        verdict = "A jogar"
+        verdict = "Pending"
         if final is not None:
             home_goals, away_goals = final
             final_text = f"{home_goals}-{away_goals}"
             verdict = (
-                "Modelo acertou"
+                "Model was right"
                 if outcome(home_goals, away_goals, home, away) == pick
-                else "Modelo errou"
+                else "Model missed"
             )
 
         matches.append(
@@ -108,7 +108,7 @@ def build_matches() -> list[dict[str, object]]:
                 "pHome": pct(analysis["p_casa"]),
                 "pDraw": pct(analysis["p_empate"]),
                 "pAway": pct(analysis["p_fora"]),
-                "pick": "Empate" if pick == "Draw" else nm(pick),
+                "pick": "Draw" if pick == "Draw" else nm(pick),
                 "pickProbability": pct(pick_probability),
                 "likelyScore": f"{likely_home}-{likely_away}",
                 "xg": f"{analysis['xg_casa']:.2f}-{analysis['xg_fora']:.2f}",
@@ -130,85 +130,131 @@ def render_html(matches: list[dict[str, object]]) -> str:
     payload = json.dumps(matches, ensure_ascii=False)
     generated_at_js = json.dumps(generated_at, ensure_ascii=False)
     return f"""<!doctype html>
-<html lang="pt-BR">
+<html lang="en">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>FielCup Hoje</title>
+  <title>FielCup Matchday</title>
   <style>
+    @import url('https://fonts.googleapis.com/css2?family=Archivo:wght@500;600;700;800;900&family=Archivo+Narrow:wght@500;700&display=swap');
     :root {{
-      --paper:#f4f1e8; --ink:#151515; --red:#c0392b; --muted:#756f62;
-      --line:#c9c2b1; --dark:#202020; --ok:#1f6f43;
+      --paper:#f2efe6; --ink:#141414; --graphite:#1e1e1e;
+      --red:#c0392b; --red-dark:#8e2a20; --line:#cdc9bc;
+      --muted:#8a867a; --silver:#9a968c; --ok:#2c6b45;
     }}
     * {{ box-sizing:border-box; }}
     body {{ margin:0; background:#d8d4c8; color:var(--ink);
-      font-family:Arial, Helvetica, sans-serif; }}
-    header {{ background:var(--dark); color:var(--paper); padding:24px 16px 18px; }}
-    h1 {{ margin:0; font-size:34px; line-height:.95; letter-spacing:-1px; }}
+      font-family:'Archivo', Arial, Helvetica, sans-serif; padding:14px; }}
+    .poster {{ max-width:840px; margin:0 auto; background:var(--paper);
+      border:1px solid #b8b4a6; box-shadow:0 20px 54px rgba(0,0,0,.18); }}
+    header {{ padding:28px 22px 22px; }}
+    .topline {{ display:flex; justify-content:space-between; gap:16px; align-items:flex-start; }}
+    .bars {{ display:flex; gap:6px; margin-bottom:24px; }}
+    .bars span {{ display:block; width:42px; height:7px; }}
+    .bars span:nth-child(1) {{ background:var(--ink); }}
+    .bars span:nth-child(2) {{ background:var(--red); }}
+    .bars span:nth-child(3) {{ background:var(--silver); }}
+    .edition {{ font-weight:900; font-size:38px; letter-spacing:-1px; line-height:.9; }}
+    .brand {{ display:flex; justify-content:space-between; align-items:flex-end; gap:16px; }}
+    h1 {{ margin:0; font-size:54px; line-height:.92; letter-spacing:0; font-weight:900; }}
     h1 span {{ color:var(--red); }}
-    header p {{ margin:8px 0 0; color:#cfc8b8; font-size:13px; line-height:1.35; }}
-    main {{ max-width:760px; margin:0 auto; padding:14px; }}
-    .toolbar {{ position:sticky; top:0; z-index:5; background:#d8d4c8;
-      padding:10px 0 12px; border-bottom:1px solid #bbb4a5; }}
-    label {{ display:block; color:var(--muted); text-transform:uppercase;
-      letter-spacing:.08em; font-size:11px; margin-bottom:6px; }}
-    select, button {{ width:100%; border:1px solid var(--dark); background:var(--paper);
-      color:var(--ink); padding:12px; font-size:16px; font-weight:700; }}
-    button {{ margin-top:8px; background:var(--dark); color:var(--paper); }}
-    .nav-link {{ display:block; margin-top:8px; border:1px solid var(--dark);
-      background:var(--paper); color:var(--dark); padding:12px; font-size:16px;
-      font-weight:800; text-align:center; text-decoration:none; }}
-    .summary {{ background:var(--paper); border:1px solid var(--line);
-      border-left:5px solid var(--red); padding:14px; margin:12px 0; }}
-    .summary h2 {{ margin:0 0 6px; font-size:18px; }}
-    .summary p {{ margin:4px 0; color:var(--muted); font-size:14px; }}
-    .match {{ background:var(--paper); border:1px solid var(--line); margin:12px 0;
-      padding:15px; border-left:5px solid var(--red); }}
+    .subtitle {{ font-family:'Archivo Narrow', Arial, sans-serif; text-align:right;
+      color:var(--ink); font-size:15px; line-height:1.25; text-transform:uppercase; }}
+    .meta {{ margin-top:10px; font-family:'Archivo Narrow', Arial, sans-serif;
+      color:var(--muted); letter-spacing:1px; text-transform:uppercase; font-size:13px; }}
+    .toolbar {{ position:sticky; top:0; z-index:5; background:var(--graphite);
+      padding:14px; border-top:1px solid rgba(242,239,230,.16);
+      border-bottom:1px solid rgba(242,239,230,.16); }}
+    label {{ display:block; color:var(--paper); opacity:.7; text-transform:uppercase;
+      letter-spacing:2px; font-family:'Archivo Narrow', Arial, sans-serif;
+      font-size:12px; margin-bottom:7px; }}
+    select, button, .nav-link {{ width:100%; min-height:46px; border:1px solid var(--line);
+      background:var(--paper); color:var(--ink); padding:11px 12px;
+      font:800 15px 'Archivo', Arial, sans-serif; border-radius:0; }}
+    button {{ margin-top:8px; background:var(--red); color:#fff; border-color:var(--red); }}
+    .nav-link {{ display:block; margin-top:8px; text-align:center; text-decoration:none;
+      background:transparent; color:var(--paper); border-color:rgba(242,239,230,.4); }}
+    main {{ padding:0; }}
+    .summary {{ padding:18px 22px; background:var(--paper); border-bottom:1px solid var(--line); }}
+    .summary h2 {{ margin:0 0 6px; font-size:24px; line-height:1.05; font-weight:900; }}
+    .summary p {{ margin:4px 0; color:#4b463d; font-size:14px; line-height:1.35; }}
+    .stage {{ background:var(--graphite); padding:18px 22px 22px; }}
+    .match {{ background:var(--paper); color:var(--ink); border:1px solid #b8b4a6;
+      margin:0 0 14px; padding:16px; border-left:5px solid var(--red); }}
     .match.done {{ border-left-color:var(--ok); }}
-    .date {{ color:var(--muted); font-size:11px; letter-spacing:.08em;
-      text-transform:uppercase; }}
-    .teams {{ margin:6px 0 10px; font-size:24px; line-height:1.05; font-weight:900; }}
-    .teams span {{ color:var(--muted); font-size:14px; font-weight:700; }}
-    .grid {{ display:grid; grid-template-columns:1fr 1fr 1fr; gap:8px; margin:12px 0; }}
-    .grid div {{ background:var(--dark); color:var(--paper); padding:10px 6px; text-align:center; }}
-    .grid small {{ display:block; color:#cfc8b8; font-size:11px; }}
-    .grid b {{ display:block; font-size:20px; margin-top:4px; }}
-    .facts {{ display:grid; grid-template-columns:1fr 1fr; gap:8px; }}
-    .facts div {{ background:#e8e1d2; padding:9px; }}
-    .facts small {{ display:block; color:var(--muted); font-size:11px; text-transform:uppercase; }}
-    .facts b {{ font-size:16px; }}
-    .status {{ margin-top:11px; padding:9px; font-size:13px; font-weight:800;
-      background:#e8e1d2; }}
-    .status.done {{ background:var(--dark); color:var(--paper); }}
-    footer {{ padding:20px 14px 30px; color:var(--muted); font-size:12px; text-align:center; }}
+    .match-kicker {{ font-family:'Archivo Narrow', Arial, sans-serif; color:var(--muted);
+      font-size:12px; letter-spacing:2px; text-transform:uppercase; font-weight:700; }}
+    .teams {{ margin:6px 0 12px; font-size:29px; line-height:1; letter-spacing:0;
+      font-weight:900; overflow-wrap:anywhere; }}
+    .teams span {{ color:var(--red); font-family:'Archivo Narrow', Arial, sans-serif;
+      font-size:17px; font-weight:700; padding:0 2px; }}
+    .prob-grid {{ display:grid; grid-template-columns:1fr 1fr 1fr; gap:0;
+      border-top:2px solid var(--ink); border-bottom:1px solid var(--line); }}
+    .prob-grid div {{ padding:12px 6px; text-align:center; border-right:1px solid var(--line);
+      min-width:0; }}
+    .prob-grid div:last-child {{ border-right:0; }}
+    .prob-grid small {{ display:block; color:var(--muted); font-family:'Archivo Narrow', Arial, sans-serif;
+      font-size:11px; letter-spacing:1px; text-transform:uppercase; white-space:nowrap;
+      overflow:hidden; text-overflow:ellipsis; }}
+    .prob-grid b {{ display:block; font-size:25px; margin-top:4px; font-weight:900; }}
+    .facts {{ display:grid; grid-template-columns:1fr 1fr; border-top:1px solid var(--line); }}
+    .fact {{ padding:11px 6px 8px; border-right:1px solid var(--line);
+      border-bottom:1px solid var(--line); min-width:0; }}
+    .fact:nth-child(even) {{ border-right:0; }}
+    .fact small {{ display:block; color:var(--red); font-family:'Archivo Narrow', Arial, sans-serif;
+      font-size:11px; letter-spacing:1px; text-transform:uppercase; font-weight:700; }}
+    .fact b {{ display:block; font-size:16px; margin-top:3px; overflow-wrap:anywhere; }}
+    .status {{ margin-top:11px; padding:9px 10px; font-size:13px; font-weight:900;
+      background:#e5dfd1; border-left:3px solid var(--red); }}
+    .status.done {{ background:var(--ink); color:var(--paper); border-left-color:var(--ok); }}
+    footer {{ padding:18px 22px 28px; color:var(--muted); font-family:'Archivo Narrow', Arial, sans-serif;
+      font-size:12px; text-transform:uppercase; letter-spacing:.8px; line-height:1.55; }}
     @media (max-width:420px) {{
-      header {{ padding-top:20px; }}
-      h1 {{ font-size:31px; }}
-      .teams {{ font-size:22px; }}
-      .grid b {{ font-size:18px; }}
+      body {{ padding:0; }}
+      .poster {{ border-left:0; border-right:0; box-shadow:none; }}
+      header {{ padding:22px 16px 18px; }}
+      .bars span {{ width:34px; }}
+      .edition {{ font-size:32px; }}
+      h1 {{ font-size:42px; }}
+      .subtitle {{ font-size:13px; }}
+      .toolbar {{ padding:12px; }}
+      .summary {{ padding:16px; }}
+      .stage {{ padding:14px 12px 18px; }}
+      .match {{ padding:14px 12px; }}
+      .teams {{ font-size:25px; }}
+      .prob-grid b {{ font-size:21px; }}
+      .fact b {{ font-size:15px; }}
     }}
   </style>
 </head>
 <body>
-  <header>
-    <h1>Fiel<span>Cup</span> Hoje</h1>
-    <p>Probabilidades dos jogos do dia, direto no celular. Sem Streamlit. Sem servidor.</p>
-    <p>Atualizado: <b id="generatedAt"></b></p>
-  </header>
-  <main>
+  <div class="poster">
+    <header>
+      <div class="topline">
+        <div class="bars"><span></span><span></span><span></span></div>
+        <div class="edition">/26</div>
+      </div>
+      <div class="brand">
+        <h1>Fiel<span>Cup</span><br>Matchday</h1>
+        <div class="subtitle">Dixon-Coles<br>plus talent<br>daily board</div>
+      </div>
+      <div class="meta">World Cup 2026 · Updated <b id="generatedAt"></b></div>
+    </header>
     <section class="toolbar">
-      <label for="dateSelect">Data dos jogos</label>
+      <label for="dateSelect">Match date</label>
       <select id="dateSelect"></select>
-      <button id="todayButton" type="button">Ver jogos de hoje</button>
-      <button id="brazilButton" type="button">Ver próximo dia do Brasil</button>
-      <a class="nav-link" href="modelo.html">Entender o modelo</a>
+      <button id="todayButton" type="button">Today</button>
+      <button id="brazilButton" type="button">Next Brazil matchday</button>
+      <a class="nav-link" href="modelo.html">Understand the model</a>
     </section>
-    <section id="summary" class="summary"></section>
-    <section id="matches"></section>
-  </main>
-  <footer>
-    FielCup · Dixon-Coles + talento · {results_count} resultados reais no banco
-  </footer>
+    <main>
+      <section id="summary" class="summary"></section>
+      <section id="matches" class="stage"></section>
+    </main>
+    <footer>
+      FielCup · Dixon-Coles + talent · {results_count} real results in the database
+    </footer>
+  </div>
   <script>
     const MATCHES = {payload};
     const GENERATED_AT = {generated_at_js};
@@ -226,8 +272,12 @@ def render_html(matches: list[dict[str, object]]) -> str:
     }}).format(new Date());
 
     function labelDate(date) {{
-      const [year, month, day] = date.split("-");
-      return `${{day}}/${{month}}/${{year}}`;
+      const parsed = new Date(`${{date}}T12:00:00Z`);
+      return new Intl.DateTimeFormat("en", {{
+        month: "short",
+        day: "numeric",
+        year: "numeric"
+      }}).format(parsed);
     }}
 
     function defaultDate() {{
@@ -259,28 +309,29 @@ def render_html(matches: list[dict[str, object]]) -> str:
       const games = MATCHES.filter(match => match.date === date);
       const finished = games.filter(match => match.final).length;
       const brazilGame = games.find(match => match.isBrazil);
+      const matchWord = games.length === 1 ? "match" : "matches";
       summaryEl.innerHTML = `
-        <h2>${{games.length}} jogo(s) em ${{labelDate(date)}}</h2>
-        <p>${{finished}} terminado(s), ${{games.length - finished}} a jogar.</p>
-        ${{brazilGame ? `<p>Brasil: <b>${{brazilGame.homeLabel}} x ${{brazilGame.awayLabel}}</b></p>` : ""}}
+        <h2>${{games.length}} ${{matchWord}} on ${{labelDate(date)}}</h2>
+        <p>${{finished}} final, ${{games.length - finished}} pending.</p>
+        ${{brazilGame ? `<p>Brazil match: <b>${{brazilGame.homeLabel}} v ${{brazilGame.awayLabel}}</b></p>` : ""}}
       `;
       matchesEl.innerHTML = games.map(match => `
         <article class="match ${{match.final ? "done" : ""}}">
-          <div class="date">${{labelDate(match.date)}}</div>
-          <div class="teams">${{match.homeLabel}} <span>vs</span> ${{match.awayLabel}}</div>
-          <div class="grid">
+          <div class="match-kicker">${{labelDate(match.date)}}</div>
+          <div class="teams">${{match.homeLabel}} <span>v</span> ${{match.awayLabel}}</div>
+          <div class="prob-grid">
             <div><small>${{match.homeLabel}}</small><b>${{match.pHome}}</b></div>
-            <div><small>Empate</small><b>${{match.pDraw}}</b></div>
+            <div><small>Draw</small><b>${{match.pDraw}}</b></div>
             <div><small>${{match.awayLabel}}</small><b>${{match.pAway}}</b></div>
           </div>
           <div class="facts">
-            <div><small>Pick</small><b>${{match.pick}} (${{match.pickProbability}})</b></div>
-            <div><small>Placar provável</small><b>${{match.likelyScore}}</b></div>
-            <div><small>xG</small><b>${{match.xg}}</b></div>
-            <div><small>Over 2.5 / BTTS</small><b>${{match.over25}} / ${{match.btts}}</b></div>
+            <div class="fact"><small>Model pick</small><b>${{match.pick}} (${{match.pickProbability}})</b></div>
+            <div class="fact"><small>Likely score</small><b>${{match.likelyScore}}</b></div>
+            <div class="fact"><small>xG</small><b>${{match.xg}}</b></div>
+            <div class="fact"><small>Over 2.5 / BTTS</small><b>${{match.over25}} / ${{match.btts}}</b></div>
           </div>
           <div class="status ${{match.final ? "done" : ""}}">
-            ${{match.final ? `Final: ${{match.final}} · ${{match.verdict}}` : "Aguardando o jogo"}}
+            ${{match.final ? `Final: ${{match.final}} - ${{match.verdict}}` : "Waiting for kickoff"}}
           </div>
         </article>
       `).join("");
@@ -305,146 +356,178 @@ def render_model_html(matches: list[dict[str, object]]) -> str:
     )
     results_count = sum(1 for match in matches if match["final"])
     return f"""<!doctype html>
-<html lang="pt-BR">
+<html lang="en">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>FielCup Modelo</title>
+  <title>FielCup Model Notes</title>
   <style>
+    @import url('https://fonts.googleapis.com/css2?family=Archivo:wght@500;600;700;800;900&family=Archivo+Narrow:wght@500;700&display=swap');
     :root {{
-      --paper:#f4f1e8; --ink:#151515; --red:#c0392b; --muted:#756f62;
-      --line:#c9c2b1; --dark:#202020; --ok:#1f6f43;
+      --paper:#f2efe6; --ink:#141414; --graphite:#1e1e1e;
+      --red:#c0392b; --line:#cdc9bc; --muted:#8a867a;
+      --silver:#9a968c; --ok:#2c6b45;
     }}
     * {{ box-sizing:border-box; }}
     body {{ margin:0; background:#d8d4c8; color:var(--ink);
-      font-family:Arial, Helvetica, sans-serif; }}
-    header {{ background:var(--dark); color:var(--paper); padding:24px 16px 18px; }}
-    h1 {{ margin:0; font-size:34px; line-height:.95; }}
+      font-family:'Archivo', Arial, Helvetica, sans-serif; padding:14px; }}
+    .poster {{ max-width:840px; margin:0 auto; background:var(--paper);
+      border:1px solid #b8b4a6; box-shadow:0 20px 54px rgba(0,0,0,.18); }}
+    header {{ padding:28px 22px 22px; }}
+    .topline {{ display:flex; justify-content:space-between; gap:16px; align-items:flex-start; }}
+    .bars {{ display:flex; gap:6px; margin-bottom:24px; }}
+    .bars span {{ display:block; width:42px; height:7px; }}
+    .bars span:nth-child(1) {{ background:var(--ink); }}
+    .bars span:nth-child(2) {{ background:var(--red); }}
+    .bars span:nth-child(3) {{ background:var(--silver); }}
+    .edition {{ font-weight:900; font-size:38px; letter-spacing:-1px; line-height:.9; }}
+    .brand {{ display:flex; justify-content:space-between; align-items:flex-end; gap:16px; }}
+    h1 {{ margin:0; font-size:54px; line-height:.92; letter-spacing:0; font-weight:900; }}
     h1 span {{ color:var(--red); }}
-    header p {{ margin:8px 0 0; color:#cfc8b8; font-size:13px; line-height:1.35; }}
-    main {{ max-width:760px; margin:0 auto; padding:14px; }}
-    .topbar {{ position:sticky; top:0; z-index:5; background:#d8d4c8;
-      padding:10px 0 12px; border-bottom:1px solid #bbb4a5; }}
-    .button {{ display:block; width:100%; border:1px solid var(--dark);
-      background:var(--dark); color:var(--paper); padding:12px; font-size:16px;
-      font-weight:800; text-align:center; text-decoration:none; }}
-    .section {{ background:var(--paper); border:1px solid var(--line);
-      border-left:5px solid var(--red); padding:15px; margin:12px 0; }}
-    h2 {{ margin:0 0 8px; font-size:22px; line-height:1.1; }}
-    h3 {{ margin:16px 0 6px; font-size:17px; }}
+    .subtitle {{ font-family:'Archivo Narrow', Arial, sans-serif; text-align:right;
+      color:var(--ink); font-size:15px; line-height:1.25; text-transform:uppercase; }}
+    .meta {{ margin-top:10px; font-family:'Archivo Narrow', Arial, sans-serif;
+      color:var(--muted); letter-spacing:1px; text-transform:uppercase; font-size:13px; }}
+    .topbar {{ position:sticky; top:0; z-index:5; background:var(--graphite);
+      padding:14px; border-top:1px solid rgba(242,239,230,.16);
+      border-bottom:1px solid rgba(242,239,230,.16); }}
+    .button {{ display:block; width:100%; border:1px solid var(--red);
+      background:var(--red); color:#fff; padding:12px; font-size:16px;
+      font-weight:900; text-align:center; text-decoration:none; border-color:var(--red); }}
+    main {{ background:var(--graphite); padding:18px 22px 22px; }}
+    .section {{ background:var(--paper); border:1px solid #b8b4a6;
+      border-left:5px solid var(--red); padding:16px; margin:0 0 14px; }}
+    h2 {{ margin:0 0 8px; font-size:25px; line-height:1.05; font-weight:900; }}
     p, li {{ color:#363227; font-size:15px; line-height:1.48; }}
     p {{ margin:8px 0; }}
     ul, ol {{ padding-left:21px; margin:8px 0; }}
-    .formula {{ background:#202020; color:#f4f1e8; padding:12px;
-      font-weight:800; overflow-wrap:anywhere; }}
-    .note {{ background:#e8e1d2; border-left:4px solid var(--ok); padding:10px;
+    .formula {{ background:var(--graphite); color:var(--paper); padding:12px;
+      font-weight:900; overflow-wrap:anywhere; margin-top:10px; }}
+    .note {{ background:#e5dfd1; border-left:4px solid var(--ok); padding:10px;
       color:#363227; }}
-    .mini {{ color:var(--muted); font-size:12px; text-transform:uppercase;
-      letter-spacing:.08em; font-weight:800; }}
+    .mini {{ color:var(--red); font-family:'Archivo Narrow', Arial, sans-serif;
+      font-size:12px; text-transform:uppercase; letter-spacing:2px; font-weight:700;
+      margin-bottom:8px; }}
     table {{ width:100%; border-collapse:collapse; margin-top:10px; font-size:13px; }}
-    th, td {{ border:1px solid var(--line); padding:8px; text-align:left; }}
-    th {{ background:#202020; color:#f4f1e8; }}
-    footer {{ padding:20px 14px 30px; color:var(--muted); font-size:12px; text-align:center; }}
+    th, td {{ border:1px solid var(--line); padding:8px; text-align:left; vertical-align:top; }}
+    th {{ background:var(--graphite); color:var(--paper); }}
+    footer {{ padding:18px 22px 28px; color:var(--muted); font-family:'Archivo Narrow', Arial, sans-serif;
+      font-size:12px; text-transform:uppercase; letter-spacing:.8px; line-height:1.55; }}
     @media (max-width:420px) {{
-      h1 {{ font-size:31px; }}
+      body {{ padding:0; }}
+      .poster {{ border-left:0; border-right:0; box-shadow:none; }}
+      header {{ padding:22px 16px 18px; }}
+      .bars span {{ width:34px; }}
+      .edition {{ font-size:32px; }}
+      h1 {{ font-size:42px; }}
       h2 {{ font-size:20px; }}
+      main {{ padding:14px 12px 18px; }}
       th, td {{ padding:7px 5px; }}
     }}
   </style>
 </head>
 <body>
-  <header>
-    <h1>Fiel<span>Cup</span> Modelo</h1>
-    <p>A página antiga de explicação, agora em HTML leve para abrir direto no celular.</p>
-    <p>Atualizado: <b>{escape(generated_at)}</b></p>
-  </header>
-  <main>
+  <div class="poster">
+    <header>
+      <div class="topline">
+        <div class="bars"><span></span><span></span><span></span></div>
+        <div class="edition">/26</div>
+      </div>
+      <div class="brand">
+        <h1>Fiel<span>Cup</span><br>Model</h1>
+        <div class="subtitle">Plain-English<br>forecast notes<br>mobile page</div>
+      </div>
+      <div class="meta">World Cup 2026 · Updated <b>{escape(generated_at)}</b></div>
+    </header>
     <nav class="topbar">
-      <a class="button" href="index.html">Voltar para os jogos de hoje</a>
+      <a class="button" href="index.html">Back to matchday</a>
     </nav>
+    <main>
+      <section class="section">
+        <div class="mini">Summary</div>
+        <h2>How the model gets the probabilities</h2>
+        <p>FielCup does not try to guess a score. It estimates team strength,
+        builds a scoreline distribution for each match, and turns that distribution
+        into win, draw and loss probabilities.</p>
+        <p class="note">The default version blends two signals: what the team has
+        done on the pitch and the talent in the squad. That keeps the model from
+        relying only on recent national-team results.</p>
+      </section>
 
-    <section class="section">
-      <div class="mini">Resumo</div>
-      <h2>Como o modelo chega nas probabilidades</h2>
-      <p>O FielCup não tenta adivinhar o resultado. Ele estima a força de cada seleção,
-      calcula uma distribuição de placares para cada jogo e transforma essa distribuição
-      em probabilidade de vitória, empate e derrota.</p>
-      <p class="note">A versão padrão mistura duas coisas: o que a seleção fez em campo
-      e o talento do elenco. Isso evita que o modelo fique preso só ao histórico recente.</p>
-    </section>
+      <section class="section">
+        <div class="mini">Four steps</div>
+        <h2>The plain-English logic</h2>
+        <ol>
+          <li><b>Results on the pitch.</b> The model reads thousands of international
+          matches and learns an attack rating and a defense rating for each team.
+          Recent matches carry more weight.</li>
+          <li><b>Dixon-Coles.</b> This is a football-specific Poisson model. It improves
+          low-score estimates such as 0-0, 1-0 and 1-1.</li>
+          <li><b>Talent prior.</b> FIFA ranking points and squad market value enter as
+          outside signals. This helps when a national team has elite players but a
+          noisy recent record.</li>
+          <li><b>Simulation.</b> For title odds, the tournament is played thousands of
+          times in the computer. A team's title probability is how often it wins.</li>
+        </ol>
+        <div class="formula">final strength = alpha x results + (1 - alpha) x talent</div>
+      </section>
 
-    <section class="section">
-      <div class="mini">4 passos</div>
-      <h2>O raciocínio em linguagem simples</h2>
-      <ol>
-        <li><b>Resultados em campo.</b> O modelo usa milhares de jogos de seleções e aprende
-        uma força de ataque e uma força de defesa para cada time. Jogos recentes pesam mais.</li>
-        <li><b>Dixon-Coles.</b> É uma versão da distribuição de Poisson ajustada para futebol.
-        Ela melhora a estimativa de placares baixos, como 0-0, 1-0 e 1-1.</li>
-        <li><b>Talento.</b> Ranking FIFA e valor de mercado do elenco entram como sinais externos.
-        Isso ajuda em casos em que a seleção tem jogadores fortes, mas poucos jogos recentes.</li>
-        <li><b>Simulação.</b> Para chances de título, a Copa é jogada milhares de vezes no computador.
-        A probabilidade é a frequência com que cada seleção termina campeã.</li>
-      </ol>
-      <div class="formula">força final = alpha x resultados + (1 - alpha) x talento</div>
-    </section>
+      <section class="section">
+        <div class="mini">Each match</div>
+        <h2>From scorelines to match odds</h2>
+        <p>For a match, the model estimates expected goals for both teams. It then
+        builds a matrix of possible scores: 0-0, 1-0, 0-1, 2-1, 1-2 and so on.</p>
+        <p>All scorelines where the home team wins are added together to get the
+        home-win probability. Draw scorelines become the draw probability. Away-win
+        scorelines become the away-win probability.</p>
+        <p>The same matrix also gives the likely score, xG, over 2.5 goals and BTTS.</p>
+      </section>
 
-    <section class="section">
-      <div class="mini">Cada partida</div>
-      <h2>Como sai Brasil x adversário, por exemplo</h2>
-      <p>Para um confronto, o modelo calcula os gols esperados de cada lado. Depois monta
-      uma matriz com muitos placares possíveis: 0-0, 1-0, 0-1, 2-1, 1-2 e assim por diante.</p>
-      <p>Somando os placares em que o Brasil vence, sai a chance de vitória do Brasil.
-      Somando os empates, sai a chance de empate. Somando os placares do adversário,
-      sai a chance do outro time.</p>
-      <p>Da mesma matriz também saem o placar mais provável, over 2.5 gols e BTTS
-      (ambos marcam).</p>
-    </section>
+      <section class="section">
+        <div class="mini">Transparency</div>
+        <h2>What the model sees and misses</h2>
+        <p>It sees recent scorelines, attacking strength, defensive strength, FIFA
+        ranking and squad value. It does not fully see injuries, age curves, fatigue,
+        tactical changes, breaking news or tournament psychology.</p>
+        <p class="note">The probabilities are a statistical lens, not a promise. The
+        value is in showing the lens and being honest about its limits.</p>
+      </section>
 
-    <section class="section">
-      <div class="mini">Transparência</div>
-      <h2>O que o modelo vê e o que ele não vê</h2>
-      <p>Ele vê placares recentes, força ofensiva, força defensiva, ranking FIFA e valor
-      do elenco. Ele ainda não vê perfeitamente lesões, idade do elenco, desgaste físico,
-      esquema tático, notícias de última hora ou motivação.</p>
-      <p class="note">Por isso as probabilidades são uma régua estatística, não uma promessa.
-      O valor do projeto está justamente em mostrar a régua e explicar seus limites.</p>
-    </section>
+      <section class="section">
+        <div class="mini">Model vs market</div>
+        <h2>Why it can differ from betting markets</h2>
+        <p>Betting markets mix statistics, context and money from thousands of bettors.
+        FielCup is more explicit: it shows its assumptions. When it disagrees, the
+        disagreement helps explain what evidence the model values.</p>
+        <table>
+          <thead>
+            <tr><th>Team</th><th>FielCup read</th><th>Context</th></tr>
+          </thead>
+          <tbody>
+            <tr><td>Argentina</td><td>Strong recent results profile</td><td>Market fades age and cycle risk</td></tr>
+            <tr><td>France</td><td>Rises when talent enters</td><td>Deep, high-value squad</td></tr>
+            <tr><td>Spain</td><td>Strong in model and market</td><td>Good blend of results and talent</td></tr>
+            <tr><td>Brazil</td><td>Still in the favorite cluster</td><td>Talent helps; recent results hold it back</td></tr>
+          </tbody>
+        </table>
+      </section>
 
-    <section class="section">
-      <div class="mini">Modelo vs mercado</div>
-      <h2>Por que às vezes diverge das casas de aposta</h2>
-      <p>Casas de aposta misturam estatística, informação contextual e dinheiro do mercado.
-      O FielCup é mais explícito: ele mostra a conta. Quando diverge, isso ajuda a entender
-      o que o modelo está valorizando.</p>
-      <table>
-        <thead>
-          <tr><th>Seleção</th><th>Leitura do FielCup</th><th>Contexto</th></tr>
-        </thead>
-        <tbody>
-          <tr><td>Argentina</td><td>Forte por resultados recentes</td><td>Mercado desconta idade e ciclo do elenco</td></tr>
-          <tr><td>França</td><td>Sobe quando talento entra</td><td>Elenco muito valorizado e profundo</td></tr>
-          <tr><td>Espanha</td><td>Forte no modelo e no mercado</td><td>Boa combinação de resultado e talento</td></tr>
-          <tr><td>Brasil</td><td>Fica no bloco dos favoritos</td><td>Talento ajuda, resultados recentes pesam contra</td></tr>
-        </tbody>
-      </table>
-    </section>
-
-    <section class="section">
-      <div class="mini">Glossário rápido</div>
-      <h2>Termos importantes</h2>
-      <ul>
-        <li><b>Poisson:</b> distribuição usada para contar eventos raros, como gols.</li>
-        <li><b>Dixon-Coles:</b> ajuste da Poisson para futebol, especialmente placares baixos.</li>
-        <li><b>Monte Carlo:</b> repetir simulações muitas vezes para estimar probabilidade.</li>
-        <li><b>Brier score:</b> métrica para medir se probabilidades previstas foram boas.</li>
-        <li><b>Alpha:</b> botão que controla quanto pesa resultado e quanto pesa talento.</li>
-      </ul>
-    </section>
-  </main>
-  <footer>
-    FielCup · Dixon-Coles + talento · {results_count} resultados reais no banco
-  </footer>
+      <section class="section">
+        <div class="mini">Quick glossary</div>
+        <h2>Key terms</h2>
+        <ul>
+          <li><b>Poisson:</b> a distribution used to count rare events, like goals.</li>
+          <li><b>Dixon-Coles:</b> a Poisson adjustment for football, especially low scores.</li>
+          <li><b>Monte Carlo:</b> repeated simulation used to estimate probabilities.</li>
+          <li><b>Brier score:</b> a metric for judging forecast probability quality.</li>
+          <li><b>Alpha:</b> the blend between results and talent.</li>
+        </ul>
+      </section>
+    </main>
+    <footer>
+      FielCup · Dixon-Coles + talent · {results_count} real results in the database
+    </footer>
+  </div>
 </body>
 </html>
 """
