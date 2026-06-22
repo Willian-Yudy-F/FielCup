@@ -6,8 +6,8 @@ a talent prior and Monte Carlo simulation.
 FielCup answers one question: **what is each nation's chance of winning the
 2026 World Cup?** The project starts from historical international match data,
 builds a SQLite analytics layer, estimates team strength, simulates the
-tournament thousands of times and presents the result in a bilingual Streamlit
-dashboard.
+tournament thousands of times and presents the result in a mobile-friendly
+English dashboard.
 
 Open the mobile report:
 
@@ -32,16 +32,11 @@ streamlit run app/dashboard.py
 
 ## Preview
 
-The dashboard is bilingual and works on desktop and mobile.
+The public GitHub Pages dashboard is English-only and works on desktop and
+mobile.
 
 <p align="center">
-  <img src="docs/img/dashboard_mobile.png" width="250" alt="FielCup mobile dashboard in Portuguese">
-  &nbsp;&nbsp;
-  <img src="docs/img/dashboard_en.png" width="250" alt="FielCup mobile dashboard in English">
-</p>
-
-<p align="center">
-  <img src="docs/img/analise_jogo.png" width="520" alt="Per-match statistical analysis in FielCup">
+  <img src="docs/img/dashboard_en.png" width="320" alt="FielCup mobile dashboard in English">
 </p>
 
 ## Why This Project
@@ -59,15 +54,16 @@ workflow:
 
 ## Current Forecast
 
-Default model: results plus talent blend with `alpha = 0.6`.
+Default model: results plus talent blend with `alpha = 0.6`, conditioned on
+32 recorded World Cup results and 20,000 Monte Carlo simulations.
 
 | Rank | Nation | Title probability | Market implied probability |
 | --- | --- | ---: | ---: |
-| 1 | Argentina | 18.5% | ~9.5% |
-| 2 | Spain | 14.8% | ~18% |
-| 3 | England | 10.2% | ~12% |
-| 4 | France | 9.8% | ~18% |
-| 5 | Brazil | 7.6% | ~10% |
+| 1 | Argentina | 19.1% | ~9.5% |
+| 2 | Spain | 14.3% | ~18% |
+| 3 | England | 10.4% | ~12% |
+| 4 | France | 9.5% | ~18% |
+| 5 | Brazil | 7.5% | ~10% |
 | 6 | Portugal | 6.4% | ~11% |
 
 The `alpha` slider controls the blend between measured results and the talent

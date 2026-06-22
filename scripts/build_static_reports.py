@@ -7,6 +7,8 @@ The page runs without Streamlit, Python, or a live server.
 from __future__ import annotations
 
 import json
+import contextlib
+import io
 import sys
 from datetime import datetime
 from html import escape
@@ -20,6 +22,7 @@ sys.path.insert(0, str(ROOT / "src"))
 
 import database as db
 from dixon_coles import analisar_jogo
+from simulate import simular
 from talento import ALPHA_PADRAO, ratings_blendados
 
 OUT = ROOT / "docs" / "index.html"
@@ -29,6 +32,28 @@ DISPLAY = {
     "Czech Republic": "Czechia",
     "United States": "USA",
     "Bosnia and Herzegovina": "Bosnia",
+}
+
+SIMS = 20_000
+
+MARKET = {
+    "Spain": 18.2,
+    "France": 18.2,
+    "England": 12.5,
+    "Portugal": 11.1,
+    "Brazil": 10.0,
+    "Argentina": 9.5,
+}
+
+TAGS = {
+    "Argentina": "holder",
+    "Spain": "euro champ",
+    "France": "#1 FIFA",
+    "Brazil": "5x champ",
+    "United States": "host",
+    "Mexico": "host",
+    "Canada": "host",
+    "Morocco": "2022 SF",
 }
 
 
@@ -64,14 +89,17 @@ def outcome(home_goals: int, away_goals: int, home: str, away: str) -> str:
     return "Draw"
 
 
-def build_matches() -> list[dict[str, object]]:
+def build_matches(
+    results: dict[tuple[str, str], tuple[int, int]] | None = None,
+) -> list[dict[str, object]]:
     fixtures = db.tabela("fixtures_2026")[
         ["date", "home_team", "away_team", "neutral"]
     ].copy()
     fixtures["date"] = pd.to_datetime(fixtures["date"]).dt.strftime("%Y-%m-%d")
 
     model = ratings_blendados(ALPHA_PADRAO)
-    results = load_results()
+    if results is None:
+        results = load_results()
     matches: list[dict[str, object]] = []
 
     for _, game in fixtures.iterrows():
@@ -122,11 +150,79 @@ def build_matches() -> list[dict[str, object]]:
     return matches
 
 
-def render_html(matches: list[dict[str, object]]) -> str:
+def build_forecast(results: dict[tuple[str, str], tuple[int, int]]) -> pd.DataFrame:
+    """Run the title forecast conditioned on recorded group-stage results."""
+    with contextlib.redirect_stdout(io.StringIO()):
+        return simular(
+            alpha=ALPHA_PADRAO,
+            sims=SIMS,
+            seed=42,
+            resultados=results,
+        )
+
+
+def title_rows(forecast: pd.DataFrame) -> str:
+    rows = []
+    for pos, (_, row) in enumerate(forecast.head(8).iterrows(), start=1):
+        team = str(row["selecao"])
+        tag = TAGS.get(team, "")
+        tag_html = f'<span class="tag">{escape(tag)}</span>' if tag else ""
+        br_class = " br" if team == "Brazil" else ""
+        rows.append(
+            f'<div class="rank-row{br_class}">'
+            f'<div class="rank-n">{pos}</div>'
+            f'<div class="rank-team">{escape(nm(team))}{tag_html}</div>'
+            f'<div class="rank-pct">{float(row["prob_titulo"]) * 100:.1f}%</div>'
+            f'</div>'
+        )
+    return "".join(rows)
+
+
+def market_rows(forecast: pd.DataFrame) -> str:
+    model = {
+        str(row["selecao"]): float(row["prob_titulo"]) * 100
+        for _, row in forecast.iterrows()
+    }
+    teams = sorted(MARKET, key=lambda team: -MARKET[team])
+    vmax = max(max(MARKET.values()), max(model.get(team, 0.0) for team in teams)) * 1.1
+    rows = [
+        '<div class="mvm-grid">',
+        '<div class="mvm-head"></div><div class="mvm-head">Model</div>'
+        '<div class="mvm-head">Market (odds)</div>',
+    ]
+    for team in teams:
+        model_pct = model.get(team, 0.0)
+        market_pct = MARKET[team]
+        model_width = model_pct / vmax * 100
+        market_width = market_pct / vmax * 100
+        rows.append(
+            f'<div class="mvm-team">{escape(nm(team))}</div>'
+            f'<div class="bar model"><i style="width:{model_width:.1f}%"></i>'
+            f'<span>{model_pct:.1f}%</span></div>'
+            f'<div class="bar market"><i style="width:{market_width:.1f}%"></i>'
+            f'<span>{market_pct:.1f}%</span></div>'
+        )
+    rows.append("</div>")
+    return "".join(rows)
+
+
+def render_html(matches: list[dict[str, object]], forecast: pd.DataFrame) -> str:
     generated_at = datetime.now(ZoneInfo("Australia/Sydney")).strftime(
         "%d/%m/%Y %H:%M Sydney"
     )
     results_count = sum(1 for match in matches if match["final"])
+    top3 = forecast.head(3).reset_index(drop=True)
+    leader = str(top3.loc[0, "selecao"])
+    second = str(top3.loc[1, "selecao"])
+    third = str(top3.loc[2, "selecao"])
+    leader_pct = float(top3.loc[0, "prob_titulo"]) * 100
+    podium_cards = "".join(
+        f'<div><b>{float(row["prob_titulo"]) * 100:.0f}%</b>'
+        f'<span>{escape(nm(str(row["selecao"]))).upper()}</span></div>'
+        for _, row in top3.iterrows()
+    )
+    title_rows_html = title_rows(forecast)
+    market_rows_html = market_rows(forecast)
     payload = json.dumps(matches, ensure_ascii=False)
     generated_at_js = json.dumps(generated_at, ensure_ascii=False)
     return f"""<!doctype html>
@@ -178,6 +274,43 @@ def render_html(matches: list[dict[str, object]]) -> str:
     .summary {{ padding:18px 22px; background:var(--paper); border-bottom:1px solid var(--line); }}
     .summary h2 {{ margin:0 0 6px; font-size:24px; line-height:1.05; font-weight:900; }}
     .summary p {{ margin:4px 0; color:#4b463d; font-size:14px; line-height:1.35; }}
+    .forecast-note {{ padding:18px 22px; background:var(--paper); border-top:1px solid var(--line);
+      border-bottom:1px solid var(--line); border-left:5px solid var(--red); }}
+    .forecast-note h2 {{ margin:0 0 10px; color:var(--red); font-size:18px; letter-spacing:2px;
+      text-transform:uppercase; font-weight:900; }}
+    .forecast-note p {{ margin:8px 0; color:#2f2b24; font-size:15px; line-height:1.45; }}
+    .podium {{ display:grid; grid-template-columns:repeat(3,1fr); gap:10px; margin-top:14px; }}
+    .podium div {{ background:var(--graphite); color:var(--paper); text-align:center;
+      padding:14px 6px 13px; min-width:0; }}
+    .podium b {{ display:block; font-size:25px; font-weight:900; }}
+    .podium span {{ display:block; margin-top:8px; color:#c8c2b4; font-family:'Archivo Narrow', Arial, sans-serif;
+      letter-spacing:1px; font-size:12px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }}
+    .forecast-board {{ background:var(--graphite); color:var(--paper); padding:28px 22px 30px; }}
+    .board-label {{ font-family:'Archivo Narrow', Arial, sans-serif; font-size:13px; letter-spacing:5px;
+      text-transform:uppercase; color:var(--paper); opacity:.72; margin-bottom:18px; }}
+    .rank-row {{ display:grid; grid-template-columns:36px 1fr auto; align-items:center; gap:14px;
+      padding:13px 0; border-bottom:1px solid rgba(242,239,230,.15); }}
+    .rank-n {{ font-size:24px; font-weight:900; color:var(--paper); opacity:.42; }}
+    .rank-team {{ font-size:21px; font-weight:900; color:var(--paper); min-width:0; overflow-wrap:anywhere; }}
+    .rank-team .tag {{ margin-left:8px; color:var(--paper); opacity:.48; font-family:'Archivo Narrow', Arial, sans-serif;
+      font-size:12px; letter-spacing:1px; text-transform:uppercase; font-weight:700; white-space:nowrap; }}
+    .rank-pct {{ font-size:24px; font-weight:900; color:var(--paper); font-variant-numeric:tabular-nums; }}
+    .rank-row.br {{ background:rgba(192,57,43,.18); margin:0 -12px; padding-left:12px; padding-right:12px;
+      border-left:4px solid var(--red); }}
+    .rank-row.br .rank-pct {{ color:var(--red); }}
+    .market-box {{ padding:24px 22px 26px; background:var(--paper); border-bottom:1px solid var(--line); }}
+    .market-title {{ margin:0 0 16px; color:var(--red); font-size:16px; letter-spacing:4px;
+      text-transform:uppercase; font-weight:900; }}
+    .mvm-grid {{ display:grid; grid-template-columns:92px 1fr 1fr; gap:7px 10px; align-items:center; }}
+    .mvm-head {{ color:var(--muted); font-family:'Archivo Narrow', Arial, sans-serif; text-transform:uppercase;
+      letter-spacing:1px; font-size:12px; font-weight:700; }}
+    .mvm-team {{ font-size:14px; font-weight:900; min-width:0; overflow-wrap:anywhere; }}
+    .bar {{ height:20px; background:var(--line); position:relative; overflow:hidden; }}
+    .bar i {{ display:block; height:100%; }}
+    .bar.model i {{ background:var(--red); }}
+    .bar.market i {{ background:var(--graphite); }}
+    .bar span {{ position:absolute; right:5px; top:0; color:#fff; font-size:12px; line-height:20px;
+      font-weight:900; font-variant-numeric:tabular-nums; text-shadow:0 1px 1px rgba(0,0,0,.5); }}
     .stage {{ background:var(--graphite); padding:18px 22px 22px; }}
     .match {{ background:var(--paper); color:var(--ink); border:1px solid #b8b4a6;
       margin:0 0 14px; padding:16px; border-left:5px solid var(--red); }}
@@ -219,6 +352,20 @@ def render_html(matches: list[dict[str, object]]) -> str:
       .subtitle {{ font-size:13px; }}
       .toolbar {{ padding:12px; }}
       .summary {{ padding:16px; }}
+      .forecast-note {{ padding:16px; }}
+      .forecast-note h2 {{ font-size:16px; letter-spacing:2px; }}
+      .podium {{ gap:6px; }}
+      .podium b {{ font-size:20px; }}
+      .forecast-board {{ padding:22px 16px 24px; }}
+      .board-label {{ font-size:12px; letter-spacing:4px; }}
+      .rank-row {{ grid-template-columns:26px 1fr auto; gap:8px; padding:10px 0; }}
+      .rank-n, .rank-pct {{ font-size:18px; }}
+      .rank-team {{ font-size:17px; }}
+      .rank-team .tag {{ display:none; }}
+      .market-box {{ padding:20px 16px 22px; }}
+      .mvm-grid {{ grid-template-columns:68px 1fr 1fr; gap:6px; }}
+      .mvm-team {{ font-size:12px; }}
+      .bar span {{ font-size:10px; }}
       .stage {{ padding:14px 12px 18px; }}
       .match {{ padding:14px 12px; }}
       .teams {{ font-size:25px; }}
@@ -238,7 +385,8 @@ def render_html(matches: list[dict[str, object]]) -> str:
         <h1>Fiel<span>Cup</span><br>Matchday</h1>
         <div class="subtitle">Dixon-Coles<br>plus talent<br>daily board</div>
       </div>
-      <div class="meta">World Cup 2026 · Updated <b id="generatedAt"></b></div>
+      <div class="meta">World Cup 2026 · {SIMS // 1000}K Monte Carlo · Results+Talent Blend (alpha={ALPHA_PADRAO:.1f})</div>
+      <div class="meta">Updated <b id="generatedAt"></b></div>
     </header>
     <section class="toolbar">
       <label for="dateSelect">Match date</label>
@@ -246,6 +394,23 @@ def render_html(matches: list[dict[str, object]]) -> str:
       <button id="todayButton" type="button">Today</button>
       <button id="brazilButton" type="button">Next Brazil matchday</button>
       <a class="nav-link" href="modelo.html">Understand the model</a>
+    </section>
+    <section class="forecast-note">
+      <h2>What's going on</h2>
+      <p>The model currently sees <b>{escape(nm(leader))}</b> as the title favorite
+      ({leader_pct:.0f}% chance), followed by <b>{escape(nm(second))}</b> and
+      <b>{escape(nm(third))}</b>.</p>
+      <p>This forecast is conditioned on <b>{results_count} recorded World Cup results</b>
+      and comes from <b>{SIMS:,} Monte Carlo simulations</b>.</p>
+      <div class="podium">{podium_cards}</div>
+    </section>
+    <section class="forecast-board">
+      <div class="board-label">Title probability · Top 8</div>
+      {title_rows_html}
+    </section>
+    <section class="market-box">
+      <h2 class="market-title">Model vs market · bookmaker favorites</h2>
+      {market_rows_html}
     </section>
     <main>
       <section id="summary" class="summary"></section>
@@ -535,8 +700,10 @@ def render_model_html(matches: list[dict[str, object]]) -> str:
 
 def main() -> int:
     OUT.parent.mkdir(parents=True, exist_ok=True)
-    matches = build_matches()
-    html = render_html(matches)
+    results = load_results()
+    matches = build_matches(results)
+    forecast = build_forecast(results)
+    html = render_html(matches, forecast)
     model_html = render_model_html(matches)
     OUT.write_text(html, encoding="utf-8")
     MODEL_OUT.write_text(model_html, encoding="utf-8")
