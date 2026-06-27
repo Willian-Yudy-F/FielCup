@@ -15,8 +15,9 @@ Open the mobile report:
 https://willian-yudy-f.github.io/FielCup/
 ```
 
-This static page shows the matches for the current day, includes a button for
-the next Brazil matchday and works directly on a phone without Streamlit.
+This static page shows the matches for the current day, the confirmed Round of
+32 knockout board, and a button for the next Brazil matchday. It works directly
+on a phone without Streamlit.
 
 Run the full dashboard locally:
 
