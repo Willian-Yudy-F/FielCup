@@ -21,6 +21,7 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "src"))
 
 import database as db
+from bracket_poster import build_round32, render_circular_bracket_svg
 from dixon_coles import analisar_jogo
 from simulate import simular
 from talento import ALPHA_PADRAO, ratings_blendados
@@ -55,26 +56,6 @@ TAGS = {
     "Canada": "host",
     "Morocco": "2022 SF",
 }
-
-ROUND32_FIXTURES = [
-    {"match": "73", "home": "South Africa", "away": "Canada", "status": "confirmed"},
-    {"match": "74", "home": "Germany", "away": "Paraguay", "status": "confirmed"},
-    {"match": "75", "home": "Netherlands", "away": "Morocco", "status": "confirmed"},
-    {"match": "76", "home": "Brazil", "away": "Japan", "status": "confirmed"},
-    {"match": "77", "home": "France", "away": None, "status": "TBD third-place team"},
-    {"match": "78", "home": "Ivory Coast", "away": "Norway", "status": "confirmed"},
-    {"match": "79", "home": "Mexico", "away": None, "status": "TBD third-place team"},
-    {"match": "80", "home": None, "away": None, "status": "Group L winner vs TBD"},
-    {"match": "81", "home": "United States", "away": "Bosnia and Herzegovina", "status": "confirmed"},
-    {"match": "82", "home": "Belgium", "away": None, "status": "TBD third-place team"},
-    {"match": "83", "home": None, "away": None, "status": "Group K runner-up vs Group L runner-up"},
-    {"match": "84", "home": "Spain", "away": None, "status": "TBD Group J runner-up"},
-    {"match": "85", "home": "Switzerland", "away": None, "status": "TBD third-place team"},
-    {"match": "86", "home": "Argentina", "away": "Cape Verde", "status": "confirmed"},
-    {"match": "87", "home": None, "away": None, "status": "Group K winner vs TBD"},
-    {"match": "88", "home": "Australia", "away": "Egypt", "status": "confirmed"},
-]
-
 
 def nm(team: str) -> str:
     return DISPLAY.get(team, team)
@@ -225,59 +206,6 @@ def market_rows(forecast: pd.DataFrame) -> str:
     return "".join(rows)
 
 
-def advance_probability(home_win: float, draw: float, away_win: float) -> tuple[float, float]:
-    decided = home_win + away_win
-    penalty_home = home_win / decided if decided else 0.5
-    home_advance = home_win + draw * penalty_home
-    return home_advance, 1.0 - home_advance
-
-
-def build_round32() -> list[dict[str, object]]:
-    model = ratings_blendados(ALPHA_PADRAO)
-    rows: list[dict[str, object]] = []
-    for fixture in ROUND32_FIXTURES:
-        home = fixture["home"]
-        away = fixture["away"]
-        if home and away:
-            analysis = analisar_jogo(model, home, away, neutro=True)
-            home_adv, away_adv = advance_probability(
-                analysis["p_casa"],
-                analysis["p_empate"],
-                analysis["p_fora"],
-            )
-            pick = home if home_adv >= away_adv else away
-            rows.append(
-                {
-                    "match": fixture["match"],
-                    "home": home,
-                    "away": away,
-                    "homeLabel": nm(home),
-                    "awayLabel": nm(away),
-                    "status": "confirmed",
-                    "pHome": pct(analysis["p_casa"]),
-                    "pDraw": pct(analysis["p_empate"]),
-                    "pAway": pct(analysis["p_fora"]),
-                    "homeAdvance": pct(home_adv),
-                    "awayAdvance": pct(away_adv),
-                    "advancePick": nm(pick),
-                    "xg": f"{analysis['xg_casa']:.2f}-{analysis['xg_fora']:.2f}",
-                    "likelyScore": f"{analysis['placar_provavel'][0]}-{analysis['placar_provavel'][1]}",
-                }
-            )
-        else:
-            rows.append(
-                {
-                    "match": fixture["match"],
-                    "home": home,
-                    "away": away,
-                    "homeLabel": nm(home) if home else "TBD",
-                    "awayLabel": nm(away) if away else "TBD",
-                    "status": fixture["status"],
-                }
-            )
-    return rows
-
-
 def round32_cards(round32: list[dict[str, object]]) -> str:
     cards = []
     for game in round32:
@@ -333,6 +261,11 @@ def render_html(
     )
     title_rows_html = title_rows(forecast)
     market_rows_html = market_rows(forecast)
+    bracket_svg = render_circular_bracket_svg(
+        round32,
+        title="FIELCUP 2026",
+        subtitle="advance probability by match",
+    )
     round32_html = round32_cards(round32)
     payload = json.dumps(matches, ensure_ascii=False)
     generated_at_js = json.dumps(generated_at, ensure_ascii=False)
@@ -427,6 +360,9 @@ def render_html(
     .round32-title {{ margin:0 0 8px; color:var(--paper); font-size:20px; letter-spacing:3px;
       text-transform:uppercase; font-weight:900; }}
     .round32-note {{ margin:0 0 16px; color:#c8c2b4; font-size:13px; line-height:1.45; }}
+    .circle-bracket-wrap {{ background:#111; border:1px solid rgba(242,239,230,.12);
+      margin:14px 0 18px; overflow:hidden; }}
+    .circle-bracket-wrap svg {{ display:block; width:100%; height:auto; }}
     .r32-grid {{ display:grid; grid-template-columns:1fr 1fr; gap:12px; }}
     .r32-card {{ background:var(--paper); color:var(--ink); border:1px solid #b8b4a6;
       border-left:5px solid var(--red); padding:13px; min-width:0; }}
@@ -562,9 +498,11 @@ def render_html(
     <section class="round32-box">
       <h2 class="round32-title">Round of 32 · knockout board</h2>
       <p class="round32-note">
-        Confirmed knockout fixtures are priced by the FielCup model. TBD slots
-        still depend on the final Group J, K and L matches.
+        Confirmed knockout fixtures are priced by the FielCup model. The circular
+        board shows advancement probability for each side; TBD slots still depend
+        on the final Group J, K and L matches.
       </p>
+      <div class="circle-bracket-wrap">{bracket_svg}</div>
       <div class="r32-grid">{round32_html}</div>
     </section>
     <main>

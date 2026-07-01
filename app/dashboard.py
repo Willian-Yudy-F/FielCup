@@ -30,6 +30,7 @@ RAIZ = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(RAIZ / "src"))
 
 try:
+    from bracket_poster import build_round32, render_circular_bracket_svg
     from dixon_coles import probabilidades, matriz_placares, analisar_jogo
     from talento import ratings_blendados, indice_talento, detalhe_blend
     from simulate import simular
@@ -241,6 +242,8 @@ div[data-testid="stMetricValue"]{font-family:'Archivo';font-weight:800;}
 .podio div{flex:1;text-align:center;background:var(--grafite);padding:10px 4px;}
 .podio .pp{font-family:'Archivo';font-weight:800;font-size:20px;color:var(--papel);}
 .podio .pn{font-family:'Archivo Narrow';font-size:12px;color:var(--papel);opacity:0.85;text-transform:uppercase;letter-spacing:0.5px;}
+.bracket-poster{background:#111;border:1px solid rgba(20,20,20,0.45);margin:8px 0 18px;overflow:hidden;}
+.bracket-poster svg{display:block;width:100%;height:auto;}
 @media (max-width: 640px){
   .block-container{padding-left:0.5rem;padding-right:0.5rem;}
   .poster{padding:22px 16px 0;border-left:none;border-right:none;}
@@ -485,6 +488,24 @@ def main():
     top12["seleção"] = top12["selecao"].map(nm)
     chart = top12.set_index("seleção")["prob_titulo"] * 100
     st.bar_chart(chart, color="#C0392B", height=280)
+
+    # ---- bracket circular do mata-mata ----
+    st.markdown(f'<div class="mini-label">{tr("Mata-mata · bracket circular", "Knockout · circular bracket")}</div>',
+                unsafe_allow_html=True)
+    round32 = build_round32(modelo)
+    bracket_svg = render_circular_bracket_svg(
+        round32,
+        title="FIELCUP 2026",
+        subtitle=tr("chance de avanço por jogo", "advance probability by match"),
+    )
+    st.markdown(f'<div class="bracket-poster">{bracket_svg}</div>',
+                unsafe_allow_html=True)
+    st.caption(tr(
+        "As bandeiras são desenhadas em SVG. A porcentagem é a chance de avançar "
+        "no confronto, incluindo pênaltis proporcionais quando o jogo empata.",
+        "Flags are drawn in SVG. The percentage is the chance to advance in the "
+        "matchup, including proportional penalties when the game is drawn.",
+    ))
 
     # ---- próximo jogo do Brasil: atalho mobile ----
     jogo_brasil = proximo_jogo_brasil(fixtures, live)

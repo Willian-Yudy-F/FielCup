@@ -88,6 +88,23 @@ def test_simulation_output_invariants(alpha):
     assert (result["prob_final"] >= result["prob_titulo"]).all()
 
 
+def test_circular_bracket_svg_uses_fielcup_match_odds():
+    from bracket_poster import build_round32, render_circular_bracket_svg
+    from talento import ratings_blendados
+
+    board = build_round32(ratings_blendados(alpha=0.6))
+    brazil = next(game for game in board if game["match"] == "76")
+    svg = render_circular_bracket_svg(board)
+
+    assert brazil["home"] == "Brazil"
+    assert brazil["away"] == "Japan"
+    assert brazil["homeAdvanceValue"] > brazil["awayAdvanceValue"]
+    assert "<svg" in svg
+    assert "BRAZIL" in svg
+    assert "JAPAN" in svg
+    assert "M76" in svg
+
+
 def test_committed_forecast_matches_documented_top_six():
     forecast = pd.read_csv(ROOT / "data" / "processed" / "prob_titulo.csv")
     top_six = forecast.head(6)
