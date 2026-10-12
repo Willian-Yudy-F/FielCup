@@ -1,5 +1,11 @@
 # FielCup
 
+
+## In plain English
+A model that tries to answer "who will win the 2026 World Cup?" It learns how strong every national team is from 150 years of match results, adds a small adjustment for current squad talent, and then simulates the whole tournament 50,000 times to see how often each country lifts the trophy. The results are shown on a phone-friendly web page and in a Streamlit dashboard.
+
+This is my biggest personal project: Python, SQL (SQLite), statistics (the Dixon-Coles model used by professional bookmakers), automated tests and a CI pipeline on GitHub Actions. If you only look at one repository, look at this one.
+
 World Cup 2026 forecasting project built with Python, SQL, Dixon-Coles ratings,
 a talent prior and Monte Carlo simulation.
 
