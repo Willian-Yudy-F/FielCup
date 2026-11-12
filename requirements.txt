@@ -11,4 +11,4 @@ streamlit>=1.58
 
 # Opcional: só para a coleta automática de resultados via API-Football
 # (o registro manual de placares no dashboard funciona sem isto)
-requests>=2.31
+requests>=2.34.2
