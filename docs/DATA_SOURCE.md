@@ -1,9 +1,8 @@
 # Data Source
 
 FielCup uses historical men's international football results derived from
-[martj42/international_results](https://github.com/martj42/international_results).
-That repository is a widely used open dataset for international football
-results from 1872 onward.
+[martj42/international_results](https://github.com/martj42/international_results),
+an open dataset covering international football results from 1872 onward.
 
 ## Main File Used
 

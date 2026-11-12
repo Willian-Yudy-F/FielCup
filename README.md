@@ -2,9 +2,9 @@
 
 
 ## In plain English
-A model that tries to answer "who will win the 2026 World Cup?" It learns how strong every national team is from 150 years of match results, adds a small adjustment for current squad talent, and then simulates the whole tournament 50,000 times to see how often each country lifts the trophy. The results are shown on a phone-friendly web page and in a Streamlit dashboard.
+A model that tries to answer "who will win the 2026 World Cup?" It learns how strong every national team is from 150 years of match results, adds a small adjustment for current squad talent, and then simulates the whole tournament thousands of times to see how often each country lifts the trophy. The published report uses 20,000 runs; the full pipeline can run 50,000. Results are shown on a phone-friendly web page and in a Streamlit dashboard.
 
-This is my biggest personal project: Python, SQL (SQLite), statistics (the Dixon-Coles model used by professional bookmakers), automated tests and a CI pipeline on GitHub Actions. If you only look at one repository, look at this one.
+This is my biggest personal project: Python, SQL (SQLite), statistical modelling with Dixon-Coles, automated tests and a CI pipeline on GitHub Actions. If you only look at one repository, look at this one.
 
 World Cup 2026 forecasting project built with Python, SQL, Dixon-Coles ratings,
 a talent prior and Monte Carlo simulation.
@@ -36,6 +36,7 @@ streamlit run app/dashboard.py
 ![sql](https://img.shields.io/badge/SQL-SQLite-003B57)
 ![streamlit](https://img.shields.io/badge/dashboard-Streamlit-C0392B)
 ![license](https://img.shields.io/badge/license-MIT-green)
+[![CI](https://github.com/Willian-Yudy-F/FielCup/actions/workflows/ci.yml/badge.svg)](https://github.com/Willian-Yudy-F/FielCup/actions/workflows/ci.yml)
 
 ## Preview
 
@@ -59,12 +60,16 @@ workflow:
 - Backtesting on the 2022 World Cup
 - Interactive dashboard for exploring forecasts and match probabilities
 
-## Current Forecast
+## Forecast Snapshot
 
 Default model: results plus talent blend with `alpha = 0.6`, conditioned on
 32 recorded World Cup results and 20,000 Monte Carlo simulations.
 
-| Rank | Nation | Title probability | Market implied probability |
+The model probabilities below are the current committed forecast. The market
+column is a **historical June 2026 snapshot**, not live odds. Approximate sources
+and methodology are documented in [Model vs expert consensus](docs/ANALISE_modelo_vs_especialistas.md).
+
+| Rank | Nation | Model title probability | June 2026 market snapshot |
 | --- | --- | ---: | ---: |
 | 1 | Argentina | 19.1% | ~9.5% |
 | 2 | Spain | 14.3% | ~18% |
