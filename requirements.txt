@@ -4,7 +4,7 @@
 # (sqlite3 já vem na biblioteca padrão do Python — nenhuma dependência extra
 #  é necessária para a camada SQL.)
 
-pandas>=2.0
+pandas>=3.1.1
 numpy>=1.24
 scipy>=1.10
 streamlit>=1.58
